@@ -142,10 +142,7 @@ security_groups = {
 enable_waf = true
 waf_scope = "REGIONAL"
 
-# SSL Certificates
-enable_ssl_certificates = true
-domain_names = ["example.com", "*.example.com"]
-route53_zone_id = ""
+
 
 # Secrets Manager
 secrets = {}

@@ -53,8 +53,6 @@ graph TB
     subgraph "⚙️ Compute Layer"
         EKS[Amazon EKS]
         LAMBDA[Lambda Functions]
-        EC2[EC2 & Auto Scaling]
-        ALB[Application Load Balancer]
     end
     
     VPC --> SG
@@ -64,7 +62,6 @@ graph TB
     IAM --> LAMBDA
     RDS --> EKS
     CACHE --> EKS
-    ALB --> EKS
 ```
 
 ### **Technology Stack**
@@ -98,7 +95,7 @@ terraform-infra/
 │   │   ├── 📖 README.md           # Data services documentation
 │   │   ├── 🔧 main.tf
 │   │   └── 📁 environments/
-│   └── ⚙️ compute/                # EKS, Lambda, EC2, ALB
+│   └── ⚙️ compute/                # EKS, Lambda
 │       ├── 📖 README.md           # Compute services documentation
 │       ├── 🔧 main.tf
 │       └── 📁 environments/
@@ -106,7 +103,7 @@ terraform-infra/
     ├── 🐳 eks/                    # Amazon EKS module (NEW!)
     ├── 🌐 api-gateway/            # API Gateway REST API module (NEW!)
     ├── ⚡ lambda/                 # AWS Lambda module
-    ├── 🌐 alb/                    # Application Load Balancer module
+
     ├── 🗄️ rds/                    # RDS Database module
     └── ... (15+ additional modules)
 ```
@@ -160,7 +157,7 @@ terraform apply -var-file=terraform.auto.tfvars
 1. 🌐 networking    # VPC, Subnets, Gateways
 2. 🔒 security      # IAM Roles, Security Groups  
 3. 🗄️ data          # Databases, Storage
-4. ⚙️ compute       # EKS, Lambda, ALB
+4. ⚙️ compute       # EKS, Lambda
 ```
 
 ### **4. EKS Post-Deployment Setup**
@@ -186,7 +183,7 @@ kubectl get pods -n kube-system
 | **🌐 Networking** | [layers/networking/README.md](layers/networking/README.md) | VPC, Subnets, Transit Gateway, VPC Endpoints |
 | **🔒 Security** | [layers/security/README.md](layers/security/README.md) | IAM Roles, Security Groups, KMS, WAF |
 | **🗄️ Data** | [layers/data/README.md](layers/data/README.md) | RDS, ElastiCache, S3, DynamoDB |
-| **⚙️ Compute** | [layers/compute/README.md](layers/compute/README.md) | EKS, Lambda, EC2, ALB, Auto Scaling |
+| **⚙️ Compute** | [layers/compute/README.md](layers/compute/README.md) | EKS, Lambda |
 
 ### **🧩 Module Documentation**
 
@@ -393,8 +390,8 @@ main              # Production deployments
 ```
 ├── layers/
 │   ├── networking/     # VPC, subnets, gateways, networking components
-│   ├── security/       # IAM, KMS, security groups, WAF, certificates
-│   ├── compute/        # EC2, Auto Scaling, Load Balancers, ECS, Lambda
+│   ├── security/       # IAM, KMS, security groups, WAF
+│   ├── compute/        # ECS, Lambda
 │   └── data/          # RDS, ElastiCache, DynamoDB, S3
 ├── modules/           # Reusable Terraform modules
 │   └── vpc/          # VPC module with best practices
@@ -450,7 +447,7 @@ Deploy layers in the following order (dependencies matter):
 
 1. **Networking Layer** (VPC, subnets)
 2. **Security Layer** (IAM, KMS, Security Groups)
-3. **Compute Layer** (EC2, ALB, ASG)
+3. **Compute Layer** (EKS, Lambda, ECS)
 4. **Data Layer** (RDS, ElastiCache, DynamoDB)
 
 **Example deployment for dev environment:**
@@ -489,11 +486,10 @@ make deploy-all ENV=dev
 - **Security Groups** with configurable rules
 - **AWS WAF** (optional)
 - **AWS Secrets Manager** integration
-- **SSL Certificates** via ACM
+
 
 ### 💻 Compute Layer
-- **Application Load Balancer** with target groups
-- **Auto Scaling Groups** with launch templates
+
 - **ECS Cluster** (optional)
 - **Lambda Functions** (optional)
 - Health checks and monitoring integration

@@ -8,69 +8,7 @@ aws_region     = "us-east-1"
 aws_profile    = "default"
 state_bucket   = "myproject-terraform-state-dev"
 
-# Load Balancer Configuration
-enable_load_balancer = true
-ssl_certificate_arn = ""
 
-target_groups = {
-  app = {
-    port     = 80
-    protocol = "HTTP"
-    health_check = {
-      enabled             = true
-      healthy_threshold   = 2
-      interval            = 30
-      matcher             = "200"
-      path                = "/"
-      port                = "traffic-port"
-      protocol            = "HTTP"
-      timeout             = 5
-      unhealthy_threshold = 2
-    }
-  }
-}
-
-alb_listeners = {
-  http = {
-    port     = 80
-    protocol = "HTTP"
-    default_action = {
-      type             = "forward"
-      target_group_arn = "app"
-    }
-  }
-}
-
-# Auto Scaling Configuration
-enable_auto_scaling = true
-ami_id = ""  # Will use latest Amazon Linux 2
-instance_type = "t3.micro"
-key_pair_name = ""
-
-asg_min_size = 1
-asg_max_size = 2
-asg_desired_capacity = 1
-
-user_data_script = <<-EOF
-#!/bin/bash
-yum update -y
-yum install -y httpd
-systemctl start httpd
-systemctl enable httpd
-echo "<h1>Hello from Dev Environment</h1>" > /var/www/html/index.html
-EOF
-
-ebs_volumes = [
-  {
-    device_name = "/dev/xvda"
-    ebs = {
-      volume_size           = 20
-      volume_type           = "gp3"
-      delete_on_termination = true
-      encrypted             = true
-    }
-  }
-]
 
 # ECS Configuration
 enable_ecs = false

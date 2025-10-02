@@ -39,79 +39,7 @@ data "terraform_remote_state" "security" {
   }
 }
 
-# =============================================================================
-# APPLICATION LOAD BALANCER
-# =============================================================================
 
-module "alb" {
-  count  = var.enable_load_balancer ? 1 : 0
-  source = "../../modules/alb"
-
-  name     = "${var.project_name}-${var.environment}"
-  vpc_id   = data.terraform_remote_state.networking.outputs.vpc_id
-  subnets  = data.terraform_remote_state.networking.outputs.public_subnets
-
-  # Security groups
-  security_groups = [
-    data.terraform_remote_state.security.outputs.security_group_ids["alb"]
-  ]
-
-  # Target groups configuration
-  target_groups = var.target_groups
-
-  # Listeners configuration
-  listeners = var.alb_listeners
-
-  # SSL certificate
-  certificate_arn = var.ssl_certificate_arn
-
-  tags = local.common_tags
-}
-
-# =============================================================================
-# AUTO SCALING GROUP WITH LAUNCH TEMPLATE
-# =============================================================================
-
-module "asg" {
-  count  = var.enable_auto_scaling ? 1 : 0
-  source = "../../modules/asg"
-
-  name = "${var.project_name}-${var.environment}"
-
-  # Launch template configuration
-  launch_template = {
-    name_prefix   = "${var.project_name}-${var.environment}-"
-    image_id      = var.ami_id
-    instance_type = var.instance_type
-    key_name      = var.key_pair_name
-    
-    vpc_security_group_ids = [
-      data.terraform_remote_state.security.outputs.security_group_ids["ec2"]
-    ]
-    
-    iam_instance_profile = data.terraform_remote_state.security.outputs.service_roles["ec2"].instance_profile_name
-    
-    user_data = base64encode(var.user_data_script)
-    
-    block_device_mappings = var.ebs_volumes
-  }
-
-  # Auto Scaling configuration
-  min_size         = var.asg_min_size
-  max_size         = var.asg_max_size
-  desired_capacity = var.asg_desired_capacity
-  
-  vpc_zone_identifier = data.terraform_remote_state.networking.outputs.private_subnets
-  
-  # Target group ARNs for ALB integration
-  target_group_arns = var.enable_load_balancer ? [module.alb[0].target_group_arns["app"]] : []
-
-  # Health check configuration
-  health_check_type         = "ELB"
-  health_check_grace_period = 300
-
-  tags = local.common_tags
-}
 
 # =============================================================================
 # ECS CLUSTER (Optional)

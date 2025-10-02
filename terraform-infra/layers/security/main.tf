@@ -111,18 +111,4 @@ module "secrets" {
   tags = local.common_tags
 }
 
-# =============================================================================
-# AWS CERTIFICATE MANAGER
-# =============================================================================
 
-module "acm" {
-  count  = var.enable_ssl_certificates ? 1 : 0
-  source = "../../modules/acm"
-
-  domain_names = var.domain_names
-  
-  # Route53 zone for validation (optional)
-  zone_id = var.route53_zone_id
-  
-  tags = local.common_tags
-}

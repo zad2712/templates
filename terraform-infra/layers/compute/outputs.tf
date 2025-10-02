@@ -2,47 +2,7 @@
 # COMPUTE LAYER OUTPUTS
 # =============================================================================
 
-# Load Balancer
-output "load_balancer_arn" {
-  description = "ARN of the load balancer"
-  value       = var.enable_load_balancer ? module.alb[0].lb_arn : null
-}
 
-output "load_balancer_dns_name" {
-  description = "DNS name of the load balancer"
-  value       = var.enable_load_balancer ? module.alb[0].lb_dns_name : null
-}
-
-output "load_balancer_zone_id" {
-  description = "Zone ID of the load balancer"
-  value       = var.enable_load_balancer ? module.alb[0].lb_zone_id : null
-}
-
-output "target_group_arns" {
-  description = "ARNs of the target groups"
-  value       = var.enable_load_balancer ? module.alb[0].target_group_arns : {}
-}
-
-# Auto Scaling Group
-output "autoscaling_group_arn" {
-  description = "ARN of the Auto Scaling Group"
-  value       = var.enable_auto_scaling ? module.asg[0].autoscaling_group_arn : null
-}
-
-output "autoscaling_group_name" {
-  description = "Name of the Auto Scaling Group"
-  value       = var.enable_auto_scaling ? module.asg[0].autoscaling_group_name : null
-}
-
-output "launch_template_id" {
-  description = "ID of the launch template"
-  value       = var.enable_auto_scaling ? module.asg[0].launch_template_id : null
-}
-
-output "launch_template_latest_version" {
-  description = "Latest version of the launch template"
-  value       = var.enable_auto_scaling ? module.asg[0].launch_template_latest_version : null
-}
 
 # ECS
 output "ecs_cluster_id" {

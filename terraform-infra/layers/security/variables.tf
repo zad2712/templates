@@ -157,27 +157,7 @@ variable "secrets" {
   default = {}
 }
 
-# =============================================================================
-# SSL CERTIFICATES CONFIGURATION
-# =============================================================================
 
-variable "enable_ssl_certificates" {
-  description = "Enable SSL certificates via ACM"
-  type        = bool
-  default     = false
-}
-
-variable "domain_names" {
-  description = "List of domain names for SSL certificates"
-  type        = list(string)
-  default     = []
-}
-
-variable "route53_zone_id" {
-  description = "Route53 zone ID for domain validation"
-  type        = string
-  default     = ""
-}
 
 # =============================================================================
 # TAGGING

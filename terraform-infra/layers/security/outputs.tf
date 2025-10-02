@@ -53,13 +53,4 @@ output "secrets" {
   sensitive   = true
 }
 
-# SSL Certificates
-output "ssl_certificates" {
-  description = "Map of SSL certificates"
-  value       = var.enable_ssl_certificates ? module.acm[0].certificates : {}
-}
 
-output "certificate_arns" {
-  description = "Map of certificate ARNs"
-  value       = var.enable_ssl_certificates ? module.acm[0].certificate_arns : {}
-}

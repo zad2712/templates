@@ -15,7 +15,7 @@ This Terraform module creates **AWS Lambda functions** with enterprise-grade fea
 
 ### 🔗 **Event Sources & Triggers**
 - **API Gateway**: RESTful and WebSocket API integration
-- **Application Load Balancer**: Direct ALB target integration
+
 - **S3 Events**: Object creation, deletion, and modification triggers
 - **DynamoDB Streams**: Real-time data processing
 - **Kinesis**: Stream processing and analytics
@@ -54,7 +54,7 @@ This Terraform module creates **AWS Lambda functions** with enterprise-grade fea
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐        │
-│  │ API Gateway │    │    ALB      │    │ CloudWatch  │        │
+│  │ API Gateway │    │             │    │ CloudWatch  │        │
 │  │   Events    │    │  Target     │    │   Events    │        │
 │  └──────┬──────┘    └──────┬──────┘    └──────┬──────┘        │
 │         │                  │                  │               │
@@ -809,33 +809,7 @@ resource "aws_api_gateway_deployment" "lambda_api" {
 }
 ```
 
-### Application Load Balancer Target
 
-```hcl
-resource "aws_lb_target_group" "lambda_tg" {
-  name        = "lambda-tg"
-  target_type = "lambda"
-  
-  health_check {
-    enabled = true
-    path    = "/health"
-  }
-}
-
-resource "aws_lb_target_group_attachment" "lambda" {
-  target_group_arn = aws_lb_target_group.lambda_tg.arn
-  target_id        = module.api_lambda.arn
-  depends_on       = [aws_lambda_permission.alb_invoke]
-}
-
-resource "aws_lambda_permission" "alb_invoke" {
-  statement_id  = "AllowExecutionFromALB"
-  action        = "lambda:InvokeFunction"
-  function_name = module.api_lambda.function_name
-  principal     = "elasticloadbalancing.amazonaws.com"
-  source_arn    = aws_lb_target_group.lambda_tg.arn
-}
-```
 
 ### SQS Queue Processing
 
