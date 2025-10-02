@@ -234,7 +234,7 @@ variable "enable_eks" {
 variable "eks_cluster_version" {
   description = "Kubernetes version to use for the EKS cluster"
   type        = string
-  default     = "1.28"
+  default     = "1.30"
 }
 
 variable "eks_endpoint_private_access" {
@@ -321,16 +321,16 @@ variable "eks_addons" {
   }))
   default = {
     vpc-cni = {
-      addon_version = "v1.15.1-eksbuild.1"
+      addon_version = "v1.18.1-eksbuild.1"
     }
     coredns = {
-      addon_version = "v1.10.1-eksbuild.5"
+      addon_version = "v1.11.1-eksbuild.4"
     }
     kube-proxy = {
-      addon_version = "v1.28.2-eksbuild.2"
+      addon_version = "v1.30.0-eksbuild.2"
     }
     aws-ebs-csi-driver = {
-      addon_version = "v1.24.0-eksbuild.1"
+      addon_version = "v1.30.0-eksbuild.1"
     }
   }
 }
@@ -348,7 +348,7 @@ variable "enable_aws_load_balancer_controller" {
 variable "aws_load_balancer_controller_chart_version" {
   description = "AWS Load Balancer Controller Helm chart version"
   type        = string
-  default     = "1.6.2"
+  default     = "1.8.1"
 }
 
 variable "aws_load_balancer_controller_namespace" {
@@ -366,7 +366,7 @@ variable "enable_cluster_autoscaler" {
 variable "cluster_autoscaler_chart_version" {
   description = "Cluster Autoscaler Helm chart version"
   type        = string
-  default     = "9.29.0"
+  default     = "9.37.0"
 }
 
 variable "cluster_autoscaler_namespace" {
@@ -384,7 +384,7 @@ variable "enable_metrics_server" {
 variable "metrics_server_chart_version" {
   description = "Metrics Server Helm chart version"
   type        = string
-  default     = "3.11.0"
+  default     = "3.12.1"
 }
 
 variable "metrics_server_namespace" {

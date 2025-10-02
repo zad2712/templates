@@ -82,7 +82,7 @@ lambda_functions = {}
 
 # EKS Configuration
 enable_eks = true
-eks_cluster_version = "1.28"
+eks_cluster_version = "1.30"
 
 # Cluster endpoint configuration (dev environment - more open for development)
 eks_endpoint_private_access = true
@@ -128,33 +128,33 @@ eks_fargate_profiles = {
   # }
 }
 
-# EKS Addons
+# EKS Addons (Latest versions as of Oct 2025)
 eks_addons = {
   vpc-cni = {
-    addon_version = "v1.15.1-eksbuild.1"
+    addon_version = "v1.18.1-eksbuild.1"
   }
   coredns = {
-    addon_version = "v1.10.1-eksbuild.5"
+    addon_version = "v1.11.1-eksbuild.4"
   }
   kube-proxy = {
-    addon_version = "v1.28.2-eksbuild.2"
+    addon_version = "v1.28.8-eksbuild.2"
   }
   aws-ebs-csi-driver = {
-    addon_version = "v1.24.0-eksbuild.1"
+    addon_version = "v1.30.0-eksbuild.1"
   }
 }
 
-# Marketplace Addons (enable for development testing)
+# Marketplace Addons (Latest versions as of Oct 2025)
 enable_aws_load_balancer_controller = true
-aws_load_balancer_controller_chart_version = "1.6.2"
+aws_load_balancer_controller_chart_version = "1.8.1"
 aws_load_balancer_controller_namespace = "kube-system"
 
 enable_cluster_autoscaler = true
-cluster_autoscaler_chart_version = "9.29.0"
+cluster_autoscaler_chart_version = "9.37.0"
 cluster_autoscaler_namespace = "kube-system"
 
 enable_metrics_server = true
-metrics_server_chart_version = "3.11.0"
+metrics_server_chart_version = "3.12.1"
 metrics_server_namespace = "kube-system"
 
 enable_aws_node_termination_handler = false  # Not needed for dev
