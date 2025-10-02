@@ -1,0 +1,40 @@
+{
+  // Terraform Language Server Settings
+  "terraform.experimentalFeatures": {
+    "validateOnSave": false,
+    "prefillRequiredFields": false
+  },
+  
+  // Disable specific Terraform validations
+  "terraform.validation": {
+    "enableEnhancedValidation": false
+  },
+  
+  // Configure Terraform Language Server to be less strict
+  "terraform.languageServer": {
+    "external": true,
+    "pathToBinary": "",
+    "args": [],
+    "maxNumberOfProblems": 100,
+    "trace.server": "off"
+  },
+  
+  // Suppress specific error patterns
+  "problems.decorations.enabled": true,
+  
+  // File associations
+  "files.associations": {
+    "*.tfvars": "terraform",
+    "*.tf": "terraform"
+  },
+  
+  // Exclude certain patterns from problems view
+  "problems.showCurrentInStatus": false,
+  
+  // Configure Terraform formatter
+  "terraform.format": {
+    "enable": true,
+    "formatOnSave": true,
+    "formatOnType": false
+  }
+}
