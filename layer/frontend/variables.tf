@@ -1,6 +1,0 @@
-# Frontend Layer - Variables
-
-variable "environment" {
-  description = "Environment name"
-  type        = string
-}
