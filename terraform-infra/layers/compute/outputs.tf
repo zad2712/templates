@@ -146,3 +146,63 @@ output "eks_kubectl_config" {
   value       = var.enable_eks ? module.eks[0].kubectl_config : null
   sensitive   = true
 }
+
+# =============================================================================
+# API GATEWAY OUTPUTS
+# =============================================================================
+
+output "api_gateway_rest_api_id" {
+  description = "ID of the REST API"
+  value       = var.enable_api_gateway ? module.api_gateway[0].rest_api_id : null
+}
+
+output "api_gateway_rest_api_arn" {
+  description = "ARN of the REST API"
+  value       = var.enable_api_gateway ? module.api_gateway[0].rest_api_arn : null
+}
+
+output "api_gateway_stage_invoke_url" {
+  description = "URL to invoke the API pointing to the stage"
+  value       = var.enable_api_gateway ? module.api_gateway[0].stage_invoke_url : null
+}
+
+output "api_gateway_stage_arn" {
+  description = "ARN of the API Gateway stage"
+  value       = var.enable_api_gateway ? module.api_gateway[0].stage_arn : null
+}
+
+output "api_gateway_execution_arn" {
+  description = "Execution ARN to be used in lambda_permission's source_arn"
+  value       = var.enable_api_gateway ? module.api_gateway[0].rest_api_execution_arn : null
+}
+
+output "api_gateway_resources" {
+  description = "Map of API Gateway resources"
+  value       = var.enable_api_gateway ? module.api_gateway[0].api_resources : {}
+}
+
+output "api_gateway_methods" {
+  description = "Map of API Gateway methods"
+  value       = var.enable_api_gateway ? module.api_gateway[0].api_methods : {}
+}
+
+output "api_gateway_usage_plans" {
+  description = "Map of API Gateway usage plans"
+  value       = var.enable_api_gateway ? module.api_gateway[0].usage_plans : {}
+}
+
+output "api_gateway_api_keys" {
+  description = "Map of API Gateway API keys"
+  value       = var.enable_api_gateway ? module.api_gateway[0].api_keys : {}
+  sensitive   = true
+}
+
+output "api_gateway_domain_name" {
+  description = "Custom domain name configuration"
+  value       = var.enable_api_gateway ? module.api_gateway[0].domain_name : null
+}
+
+output "api_gateway_access_log_group_arn" {
+  description = "ARN of the CloudWatch log group for access logs"
+  value       = var.enable_api_gateway ? module.api_gateway[0].access_log_group_arn : null
+}

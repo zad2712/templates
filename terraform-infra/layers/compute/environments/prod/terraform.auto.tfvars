@@ -204,6 +204,227 @@ enable_aws_node_termination_handler = true
 enable_external_dns = true
 external_dns_domain_name = "example.com"  # Production domain
 
+# =============================================================================
+# API GATEWAY CONFIGURATION - PRODUCTION
+# =============================================================================
+
+# Production API Gateway with full features
+enable_api_gateway = true
+api_gateway_stage_name = "v1"
+api_gateway_endpoint_types = ["REGIONAL"]
+api_gateway_disable_execute_api_endpoint = false  # Set to true if using custom domain only
+
+# Production logging and monitoring
+api_gateway_enable_access_logging = true
+api_gateway_enable_execution_logging = false
+api_gateway_log_retention_days = 90  # 3 months for compliance
+api_gateway_enable_xray_tracing = true
+
+# Performance optimization for production
+api_gateway_cache_cluster_enabled = true
+api_gateway_cache_cluster_size = "1.6"  # 1.6 GB cache for production
+
+# Production throttling settings
+api_gateway_throttle_settings = {
+  rate_limit  = 1000
+  burst_limit = 2000
+}
+
+# Stage variables for production
+api_gateway_stage_variables = {
+  environment = "prod"
+  lambda_alias = "PROD"
+  version = "1.0"
+}
+
+# Production API structure
+api_gateway_resources = {
+  api = {
+    path_part = "api"
+  }
+  v1 = {
+    path_part = "v1"
+    parent_id = "api"
+  }
+  users = {
+    path_part = "users"
+    parent_id = "v1"
+  }
+  user_id = {
+    path_part = "{user_id}"
+    parent_id = "users"
+  }
+  orders = {
+    path_part = "orders"
+    parent_id = "v1"
+  }
+  order_id = {
+    path_part = "{order_id}"
+    parent_id = "orders"
+  }
+  health = {
+    path_part = "health"
+    parent_id = "api"
+  }
+}
+
+# Production API methods with authentication
+api_gateway_methods = {
+  # Public health check
+  health_check = {
+    resource_key  = "health"
+    http_method   = "GET"
+    authorization = "NONE"
+    
+    integration = {
+      type = "MOCK"
+      request_templates = {
+        "application/json" = "{\"statusCode\": 200}"
+      }
+    }
+    
+    responses = {
+      "200" = {
+        status_code = "200"
+        response_models = {
+          "application/json" = "Empty"
+        }
+        integration_response = {
+          response_templates = {
+            "application/json" = "{\"status\": \"healthy\", \"environment\": \"prod\", \"timestamp\": \"$context.requestTime\"}"
+          }
+        }
+      }
+    }
+  }
+  
+  # Authenticated user endpoints would be configured here
+  # get_users = {
+  #   resource_key     = "users"
+  #   http_method      = "GET"
+  #   authorization    = "AWS_IAM"  # or COGNITO_USER_POOLS, CUSTOM
+  #   api_key_required = true
+  #   
+  #   integration = {
+  #     type = "AWS_PROXY"
+  #     integration_http_method = "POST"
+  #     uri = "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${lambda_function_arn}/invocations"
+  #   }
+  #   
+  #   responses = {
+  #     "200" = {
+  #       status_code = "200"
+  #       integration_response = {}
+  #     }
+  #   }
+  # }
+}
+
+# Request validation for production
+api_gateway_request_validators = {
+  validate_body = {
+    name                        = "validate-body-prod"
+    validate_request_body       = true
+    validate_request_parameters = false
+  }
+  validate_params = {
+    name                        = "validate-params-prod"
+    validate_request_body       = false
+    validate_request_parameters = true
+  }
+  validate_all = {
+    name                        = "validate-all-prod"
+    validate_request_body       = true
+    validate_request_parameters = true
+  }
+}
+
+# Production usage plans with tiered access
+api_gateway_usage_plans = {
+  basic_plan = {
+    name        = "Basic Plan"
+    description = "Basic production usage plan"
+    
+    api_stages = [{
+      stage = "v1"
+      throttle = {
+        path        = "/*/*"
+        rate_limit  = 100
+        burst_limit = 200
+      }
+    }]
+    
+    quota_settings = {
+      limit  = 10000
+      period = "MONTH"
+    }
+    
+    throttle_settings = {
+      rate_limit  = 100
+      burst_limit = 200
+    }
+  }
+  
+  premium_plan = {
+    name        = "Premium Plan"
+    description = "Premium production usage plan"
+    
+    api_stages = [{
+      stage = "v1"
+      throttle = {
+        path        = "/*/*"
+        rate_limit  = 1000
+        burst_limit = 2000
+      }
+    }]
+    
+    quota_settings = {
+      limit  = 100000
+      period = "MONTH"
+    }
+    
+    throttle_settings = {
+      rate_limit  = 1000
+      burst_limit = 2000
+    }
+  }
+}
+
+# Production API keys
+api_gateway_api_keys = {
+  client_basic = {
+    name        = "client-basic-key"
+    description = "Basic tier client API key"
+    enabled     = true
+  }
+  client_premium = {
+    name        = "client-premium-key"
+    description = "Premium tier client API key"
+    enabled     = true
+  }
+}
+
+# Usage plan associations
+api_gateway_usage_plan_keys = {
+  basic_association = {
+    api_key_name     = "client_basic"
+    usage_plan_name  = "basic_plan"
+  }
+  premium_association = {
+    api_key_name     = "client_premium"
+    usage_plan_name  = "premium_plan"
+  }
+}
+
+# Custom domain configuration (uncomment and configure as needed)
+# api_gateway_domain_name = "api.example.com"
+# api_gateway_certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/example"
+# api_gateway_domain_security_policy = "TLS_1_2"
+# api_gateway_base_path = "v1"
+
+# WAF integration for production security (uncomment and configure as needed)
+# api_gateway_waf_acl_arn = "arn:aws:wafv2:us-east-1:123456789012:regional/webacl/api-waf/example"
+
 # Tags
 common_tags = {
   Owner       = "DevOps Team"

@@ -41,6 +41,14 @@ The compute layer establishes:
 - **Fargate Integration**: Serverless container execution
 - **Application Integration**: Load balancer and service mesh integration
 
+#### **Amazon API Gateway**
+- **REST API Management**: Complete API lifecycle with resources, methods, and integrations
+- **Authorization & Security**: Multiple authentication types (IAM, Cognito, Lambda, API Keys)
+- **Throttling & Rate Limiting**: Usage plans with quota and rate controls
+- **Monitoring & Logging**: CloudWatch integration, X-Ray tracing, access logging
+- **Performance Optimization**: Response caching, compression, regional endpoints
+- **Custom Domain Support**: SSL/TLS termination with custom certificates
+
 #### **Application Load Balancer (ALB)**
 - **Layer 7 Routing**: HTTP/HTTPS traffic distribution
 - **SSL Termination**: Centralized certificate management
@@ -198,6 +206,35 @@ module "ecs" {
 }
 ```
 
+### **API Gateway Module**
+```hcl
+module "api_gateway" {
+  count  = var.enable_api_gateway ? 1 : 0
+  source = "../../modules/api-gateway"
+
+  api_name        = "${var.project_name}-${var.environment}-api"
+  api_description = "REST API Gateway for ${var.project_name}"
+  stage_name      = var.api_gateway_stage_name
+
+  # Security and performance
+  enable_access_logging    = var.api_gateway_enable_access_logging
+  enable_xray_tracing     = var.api_gateway_enable_xray_tracing
+  cache_cluster_enabled   = var.api_gateway_cache_cluster_enabled
+  
+  # API structure
+  api_resources     = var.api_gateway_resources
+  api_methods       = var.api_gateway_methods
+  usage_plans       = var.api_gateway_usage_plans
+  api_keys          = var.api_gateway_api_keys
+  
+  # Custom domain (optional)
+  domain_name       = var.api_gateway_domain_name
+  certificate_arn   = var.api_gateway_certificate_arn
+  
+  tags = local.common_tags
+}
+```
+
 ## EKS Configuration
 
 ### 🚀 **Kubernetes Cluster Setup**
@@ -298,6 +335,120 @@ eks_node_groups = {
     labels = {
       role = "general"
       environment = "dev"
+    }
+  }
+}
+```
+
+## API Gateway Configuration
+
+### 🚀 **REST API Setup**
+
+#### **Basic API Gateway**
+```hcl
+# Enable API Gateway with basic configuration
+enable_api_gateway = true
+api_gateway_stage_name = "v1"
+api_gateway_endpoint_types = ["REGIONAL"]
+
+# Basic API structure
+api_gateway_resources = {
+  api = {
+    path_part = "api"
+  }
+  health = {
+    path_part = "health"
+    parent_id = "api"
+  }
+}
+
+# Health check endpoint
+api_gateway_methods = {
+  health_check = {
+    resource_key  = "health"
+    http_method   = "GET"
+    authorization = "NONE"
+    
+    integration = {
+      type = "MOCK"
+      request_templates = {
+        "application/json" = "{\"statusCode\": 200}"
+      }
+    }
+    
+    responses = {
+      "200" = {
+        status_code = "200"
+        integration_response = {
+          response_templates = {
+            "application/json" = "{\"status\": \"healthy\"}"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+#### **Production API with Authentication**
+```hcl
+# Production API Gateway with full features
+enable_api_gateway = true
+api_gateway_stage_name = "v1"
+api_gateway_enable_access_logging = true
+api_gateway_enable_xray_tracing = true
+api_gateway_cache_cluster_enabled = true
+
+# Usage plans for rate limiting
+api_gateway_usage_plans = {
+  basic_plan = {
+    name = "Basic Plan"
+    api_stages = [{
+      stage = "v1"
+      throttle = {
+        path        = "/*/*"
+        rate_limit  = 100
+        burst_limit = 200
+      }
+    }]
+    quota_settings = {
+      limit  = 10000
+      period = "MONTH"
+    }
+  }
+}
+
+# API keys for authentication
+api_gateway_api_keys = {
+  client_key = {
+    name        = "client-api-key"
+    description = "Client application API key"
+    enabled     = true
+  }
+}
+```
+
+#### **Lambda Integration Example**
+```hcl
+# API method with Lambda backend
+api_gateway_methods = {
+  get_users = {
+    resource_key     = "users"
+    http_method      = "GET"
+    authorization    = "AWS_IAM"
+    api_key_required = true
+    
+    integration = {
+      type = "AWS_PROXY"
+      integration_http_method = "POST"
+      uri = "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${aws_lambda_function.users.arn}/invocations"
+    }
+    
+    responses = {
+      "200" = {
+        status_code = "200"
+        integration_response = {}
+      }
     }
   }
 }
@@ -573,6 +724,22 @@ output "lambda_function_arns" {
   description = "Map of Lambda function ARNs"
   value       = length(var.lambda_functions) > 0 ? module.lambda[0].function_arns : {}
 }
+
+# API Gateway Information
+output "api_gateway_rest_api_id" {
+  description = "ID of the REST API"
+  value       = var.enable_api_gateway ? module.api_gateway[0].rest_api_id : null
+}
+
+output "api_gateway_stage_invoke_url" {
+  description = "URL to invoke the API pointing to the stage"
+  value       = var.enable_api_gateway ? module.api_gateway[0].stage_invoke_url : null
+}
+
+output "api_gateway_execution_arn" {
+  description = "Execution ARN for Lambda permissions"
+  value       = var.enable_api_gateway ? module.api_gateway[0].rest_api_execution_arn : null
+}
 ```
 
 ## Performance Optimization
@@ -683,6 +850,14 @@ kubectl apply -f k8s-manifests/
 - **Instance Metadata**: Use IMDSv2 only
 - **Systems Manager**: Use Session Manager instead of SSH
 - **Patch Management**: Automated patching with Systems Manager
+
+#### **API Gateway Security**
+- **Authentication**: Multiple methods (IAM, Cognito, Lambda authorizers, API Keys)
+- **Authorization**: Resource-based policies and method-level permissions
+- **Request Validation**: Schema-based input validation and sanitization
+- **Rate Limiting**: Usage plans with quotas and throttling
+- **WAF Integration**: Web Application Firewall for additional protection
+- **CORS Configuration**: Proper cross-origin resource sharing setup
 
 ## Troubleshooting
 

@@ -104,6 +104,7 @@ terraform-infra/
 │       └── 📁 environments/
 └── 🧩 modules/                    # Reusable Terraform modules
     ├── 🐳 eks/                    # Amazon EKS module (NEW!)
+    ├── 🌐 api-gateway/            # API Gateway REST API module (NEW!)
     ├── ⚡ lambda/                 # AWS Lambda module
     ├── 🌐 alb/                    # Application Load Balancer module
     ├── 🗄️ rds/                    # RDS Database module
@@ -114,6 +115,7 @@ terraform-infra/
 
 ### 🆕 **What's New** 
 - **🐳 EKS Module**: Complete Kubernetes cluster implementation with best practices
+- **🌐 API Gateway Module**: Enterprise-grade REST API with authentication, throttling, and monitoring
 - **📦 Marketplace Add-ons**: AWS Load Balancer Controller, Cluster Autoscaler, Metrics Server  
 - **⬆️ Version Updates**: All components updated to latest stable versions
 - **📚 Documentation**: Comprehensive README files for all layers and components

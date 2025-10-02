@@ -224,3 +224,65 @@ module "eks" {
   
   tags = local.common_tags
 }
+
+# =============================================================================
+# API GATEWAY
+# =============================================================================
+
+module "api_gateway" {
+  count  = var.enable_api_gateway ? 1 : 0
+  source = "../../modules/api-gateway"
+
+  api_name        = "${var.project_name}-${var.environment}-api"
+  api_description = "REST API Gateway for ${var.project_name} ${var.environment} environment"
+  stage_name      = var.api_gateway_stage_name
+
+  # Endpoint configuration
+  endpoint_types                   = var.api_gateway_endpoint_types
+  disable_execute_api_endpoint     = var.api_gateway_disable_execute_api_endpoint
+  binary_media_types              = var.api_gateway_binary_media_types
+  minimum_compression_size        = var.api_gateway_minimum_compression_size
+
+  # Security configuration
+  api_policy = var.api_gateway_policy
+
+  # Logging configuration
+  enable_access_logging     = var.api_gateway_enable_access_logging
+  enable_execution_logging  = var.api_gateway_enable_execution_logging
+  log_retention_days       = var.api_gateway_log_retention_days
+
+  # Performance configuration
+  enable_xray_tracing      = var.api_gateway_enable_xray_tracing
+  cache_cluster_enabled    = var.api_gateway_cache_cluster_enabled
+  cache_cluster_size       = var.api_gateway_cache_cluster_size
+
+  # Throttling configuration
+  throttle_settings = var.api_gateway_throttle_settings
+
+  # Stage variables
+  stage_variables = var.api_gateway_stage_variables
+
+  # API structure
+  api_resources        = var.api_gateway_resources
+  api_methods          = var.api_gateway_methods
+  request_validators   = var.api_gateway_request_validators
+  api_models          = var.api_gateway_models
+  api_authorizers     = var.api_gateway_authorizers
+
+  # Usage plans and API keys
+  usage_plans        = var.api_gateway_usage_plans
+  api_keys          = var.api_gateway_api_keys
+  usage_plan_keys   = var.api_gateway_usage_plan_keys
+
+  # Custom domain configuration
+  domain_name              = var.api_gateway_domain_name
+  certificate_arn          = var.api_gateway_certificate_arn
+  domain_security_policy   = var.api_gateway_domain_security_policy
+  domain_endpoint_types    = var.api_gateway_domain_endpoint_types
+  base_path               = var.api_gateway_base_path
+
+  # WAF integration
+  waf_acl_arn = var.api_gateway_waf_acl_arn
+
+  tags = local.common_tags
+}
