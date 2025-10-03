@@ -80,6 +80,7 @@ terraform-infra/
 ├── 📋 README.md                    # This documentation
 ├── ⚙️ Makefile                     # Automation commands
 ├── 🔧 terraform-manager.ps1        # PowerShell deployment script
+├── 🔧 terraform-manager.sh         # Bash deployment script
 ├── 🌍 global/                      # Account-wide shared resources
 │   └── 📖 README.md               # Global resources documentation
 ├── 🏗️ layers/                      # Infrastructure layers
@@ -139,12 +140,42 @@ cd terraform-infra
 ```
 
 ### **2. Deploy Infrastructure Layers**
-```bash
-# Option 1: Use PowerShell script (Recommended)
-./terraform-manager.ps1 -Layer networking -Environment dev -Action plan
-./terraform-manager.ps1 -Layer networking -Environment dev -Action apply
 
-# Option 2: Manual deployment
+#### **🔧 Using Deployment Scripts (Recommended)**
+
+**PowerShell (Windows):**
+```powershell
+# Bootstrap AWS backend resources
+./terraform-manager.ps1 -Action bootstrap -Environment dev
+
+# Deploy single layer
+./terraform-manager.ps1 -Action init -Layer networking -Environment dev
+./terraform-manager.ps1 -Action plan -Layer networking -Environment dev
+./terraform-manager.ps1 -Action apply -Layer networking -Environment dev
+
+# Deploy all layers at once
+./terraform-manager.ps1 -Action deploy-all -Environment dev
+```
+
+**Bash (Linux/Mac):**
+```bash
+# Make script executable (first time only)
+chmod +x terraform-manager.sh
+
+# Bootstrap AWS backend resources
+./terraform-manager.sh -a bootstrap -e dev
+
+# Deploy single layer
+./terraform-manager.sh -a init -l networking -e dev
+./terraform-manager.sh -a plan -l networking -e dev
+./terraform-manager.sh -a apply -l networking -e dev
+
+# Deploy all layers at once
+./terraform-manager.sh -a deploy-all -e dev
+```
+
+#### **⚙️ Manual Deployment**
+```bash
 cd layers/networking/environments/dev
 terraform init -backend-config=backend.conf
 terraform plan -var-file=terraform.auto.tfvars
