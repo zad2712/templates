@@ -458,4 +458,10 @@ aws ec2 describe-subnets --filters "Name=vpc-id,Values=vpc-xxx"
 
 ---
 
+## 👤 Author
+
+**Diego A. Zarate** - *VPC & Network Security Specialist*
+
+---
+
 > 🌐 **Network Foundation**: This VPC module provides the secure, scalable network foundation for your entire AWS infrastructure with enterprise-grade security and monitoring built-in.

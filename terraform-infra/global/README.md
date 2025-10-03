@@ -313,4 +313,10 @@ terraform force-unlock LOCK_ID
 
 ---
 
+## 👤 Author
+
+**Diego A. Zarate** - *Infrastructure Foundation & Global Resource Specialist*
+
+---
+
 > 💡 **Remember**: Global resources are the foundation of your infrastructure. Changes here can impact all environments, so proceed with caution and proper planning.

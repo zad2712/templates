@@ -404,6 +404,13 @@ main              # Production deployments
 - Use AWS Config for compliance and configuration validation
 - Leverage AWS Support for complex technical issues
 
+## 👤 Author
+
+**Diego A. Zarate** - *Infrastructure Architect & DevOps Engineer*  
+- 🏗️ Enterprise Terraform Infrastructure Design
+- ☁️ AWS Multi-Layer Architecture Specialist  
+- 🔒 Security & Cost Optimization Expert
+
 ---
 
 > 🏗️ **Infrastructure Excellence**: This repository represents enterprise-grade infrastructure patterns with security, scalability, and cost optimization built-in from day one. Happy building! 🚀

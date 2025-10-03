@@ -315,4 +315,10 @@ aws ec2 describe-subnets --filters "Name=vpc-id,Values=vpc-xxxxx"
 
 ---
 
+## 👤 Author
+
+**Diego A. Zarate** - *Network Infrastructure Specialist*
+
+---
+
 > 💡 **Next Steps**: After networking deployment, proceed with [Security Layer](../security/README.md) configuration.

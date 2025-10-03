@@ -895,4 +895,10 @@ kubectl logs -f deployment/cluster-autoscaler -n kube-system
 
 ---
 
+## 👤 Author
+
+**Diego A. Zarate** - *Compute Infrastructure & Container Specialist*
+
+---
+
 > ⚙️ **Compute Foundation**: This layer provides scalable, secure, and cost-effective compute resources for your applications. Choose the right compute service based on your workload characteristics and requirements.

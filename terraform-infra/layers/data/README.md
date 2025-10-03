@@ -624,4 +624,10 @@ replication_configuration = {
 
 ---
 
+## 👤 Author
+
+**Diego A. Zarate** - *Data Architecture & Database Specialist*
+
+---
+
 > 🗃️ **Data Foundation**: This layer provides scalable, secure, and performant data storage for your applications. Regular monitoring and optimization ensure optimal performance and cost-effectiveness.

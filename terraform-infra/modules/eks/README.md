@@ -705,4 +705,10 @@ aws iam get-role --role-name AmazonEKSLoadBalancerControllerRole
 
 ---
 
+## 👤 Author
+
+**Diego A. Zarate** - *Kubernetes & Container Orchestration Specialist*
+
+---
+
 > 🚀 **Container Orchestration Excellence**: This EKS module provides enterprise-grade Kubernetes infrastructure with cost optimization, security, and operational excellence built-in from day one.

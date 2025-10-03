@@ -539,4 +539,10 @@ terraform apply -var-file=terraform.auto.tfvars
 
 ---
 
+## 👤 Author
+
+**Diego A. Zarate** - *Security Architecture & Compliance Specialist*
+
+---
+
 > 🔒 **Security First**: This layer provides the foundation for secure operations. Regular reviews and updates are essential for maintaining security posture.

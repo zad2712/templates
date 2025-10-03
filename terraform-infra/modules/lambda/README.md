@@ -958,4 +958,10 @@ aws cloudwatch get-metric-statistics \
 
 ---
 
+## 👤 Author
+
+**Diego A. Zarate** - *Serverless Architecture & Lambda Specialist*
+
+---
+
 > ⚡ **Serverless Excellence**: This Lambda module provides enterprise-grade serverless computing with automatic scaling, comprehensive monitoring, and battle-tested integration patterns built-in.

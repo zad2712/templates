@@ -756,4 +756,10 @@ aws rds restore-db-instance-from-db-snapshot \
 
 ---
 
+## 👤 Author
+
+**Diego A. Zarate** - *Database Infrastructure & Performance Specialist*
+
+---
+
 > 🗄️ **Database Excellence**: This RDS module provides enterprise-grade database infrastructure with high availability, security, performance optimization, and comprehensive monitoring built-in.
