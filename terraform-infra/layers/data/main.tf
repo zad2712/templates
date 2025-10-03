@@ -69,7 +69,10 @@ module "rds" {
     data.terraform_remote_state.security.outputs.security_group_ids["rds"]
   ]
 
-  db_subnet_group_name = module.rds_subnet_group.name
+  # Subnet group configuration
+  create_db_subnet_group = true
+  db_subnet_group_name   = "${var.project_name}-${var.environment}-rds"
+  subnet_ids             = data.terraform_remote_state.networking.outputs.database_subnets
 
   # Backup configuration
   backup_retention_period = var.rds_backup_retention_period
@@ -85,17 +88,6 @@ module "rds" {
 
   # Performance Insights
   performance_insights_enabled = var.enable_performance_insights
-
-  tags = local.common_tags
-}
-
-# RDS Subnet Group
-module "rds_subnet_group" {
-  count  = var.enable_rds ? 1 : 0
-  source = "../../modules/rds-subnet-group"
-
-  name       = "${var.project_name}-${var.environment}-rds"
-  subnet_ids = data.terraform_remote_state.networking.outputs.database_subnets
 
   tags = local.common_tags
 }
@@ -117,7 +109,7 @@ module "elasticache_redis" {
   parameter_group_name = var.redis_parameter_group
 
   # Network configuration
-  subnet_group_name = module.elasticache_subnet_group[0].name
+  subnet_group_name = var.enable_elasticache ? aws_elasticache_subnet_group.main[0].name : null
   security_group_ids = [
     data.terraform_remote_state.security.outputs.security_group_ids["redis"]
   ]
@@ -133,14 +125,14 @@ module "elasticache_redis" {
 }
 
 # ElastiCache Subnet Group
-module "elasticache_subnet_group" {
-  count  = var.enable_elasticache ? 1 : 0
-  source = "../../modules/elasticache-subnet-group"
-
+resource "aws_elasticache_subnet_group" "main" {
+  count      = var.enable_elasticache ? 1 : 0
   name       = "${var.project_name}-${var.environment}-elasticache"
   subnet_ids = data.terraform_remote_state.networking.outputs.private_subnets
 
-  tags = local.common_tags
+  tags = merge(local.common_tags, {
+    Name = "${var.project_name}-${var.environment}-elasticache-subnet-group"
+  })
 }
 
 # =============================================================================
