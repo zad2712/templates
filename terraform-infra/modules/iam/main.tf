@@ -19,13 +19,13 @@ terraform {
 resource "aws_iam_role" "roles" {
   for_each = var.roles
 
-  name                = each.key
-  assume_role_policy  = each.value.assume_role_policy
-  description         = lookup(each.value, "description", null)
+  name                  = each.key
+  assume_role_policy    = each.value.assume_role_policy
+  description           = lookup(each.value, "description", null)
   force_detach_policies = lookup(each.value, "force_detach_policies", false)
-  max_session_duration = lookup(each.value, "max_session_duration", 3600)
-  path                = lookup(each.value, "path", "/")
-  permissions_boundary = lookup(each.value, "permissions_boundary", null)
+  max_session_duration  = lookup(each.value, "max_session_duration", 3600)
+  path                  = lookup(each.value, "path", "/")
+  permissions_boundary  = lookup(each.value, "permissions_boundary", null)
 
   dynamic "inline_policy" {
     for_each = lookup(each.value, "inline_policies", {})
@@ -118,7 +118,7 @@ resource "aws_iam_user" "users" {
   name                 = each.key
   path                 = lookup(each.value, "path", "/")
   permissions_boundary = lookup(each.value, "permissions_boundary", null)
-  force_destroy       = lookup(each.value, "force_destroy", false)
+  force_destroy        = lookup(each.value, "force_destroy", false)
 
   tags = merge(var.tags, lookup(each.value, "tags", {}))
 }

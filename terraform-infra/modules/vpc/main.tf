@@ -19,23 +19,23 @@ terraform {
 locals {
   # Use provided AZs or fetch available ones
   azs = length(var.availability_zones) > 0 ? var.availability_zones : slice(data.aws_availability_zones.available.names, 0, min(length(var.public_subnets), length(var.private_subnets)))
-  
+
   # Create maps for subnets indexed by AZ for deterministic resource keys
-  public_subnets_map = { 
+  public_subnets_map = {
     for idx, cidr in var.public_subnets : idx => {
       cidr = cidr
       az   = local.azs[idx % length(local.azs)]
     }
   }
-  
-  private_subnets_map = { 
+
+  private_subnets_map = {
     for idx, cidr in var.private_subnets : idx => {
       cidr = cidr
       az   = local.azs[idx % length(local.azs)]
     }
   }
-  
-  database_subnets_map = { 
+
+  database_subnets_map = {
     for idx, cidr in var.database_subnets : idx => {
       cidr = cidr
       az   = local.azs[idx % length(local.azs)]
@@ -205,7 +205,7 @@ resource "aws_route_table" "private" {
 # Database Route Table
 resource "aws_route_table" "database" {
   count = length(var.database_subnets) > 0 ? 1 : 0
-  
+
   vpc_id = aws_vpc.main.id
 
   tags = merge(var.tags, {
@@ -248,11 +248,11 @@ resource "aws_route_table_association" "database" {
 resource "aws_flow_log" "vpc" {
   count = var.enable_flow_logs ? 1 : 0
 
-  iam_role_arn    = var.flow_logs_iam_role_arn
-  log_destination = var.flow_logs_s3_bucket_arn
+  iam_role_arn         = var.flow_logs_iam_role_arn
+  log_destination      = var.flow_logs_s3_bucket_arn
   log_destination_type = "s3"
-  traffic_type    = "ALL"
-  vpc_id          = aws_vpc.main.id
+  traffic_type         = "ALL"
+  vpc_id               = aws_vpc.main.id
 
   tags = merge(var.tags, {
     Name = "${var.name}-flow-logs"

@@ -85,16 +85,16 @@ variable "node_groups" {
   description = "Map of EKS managed node group definitions"
   type = map(object({
     subnet_ids                 = list(string)
-    instance_types            = list(string)
-    ami_type                  = optional(string, "AL2_x86_64")
-    capacity_type             = optional(string, "SPOT")  # Use SPOT for cost optimization
-    disk_size                 = optional(number, 20)
-    desired_size              = optional(number, 1)
-    max_size                  = optional(number, 3)
-    min_size                  = optional(number, 1)
+    instance_types             = list(string)
+    ami_type                   = optional(string, "AL2_x86_64")
+    capacity_type              = optional(string, "SPOT") # Use SPOT for cost optimization
+    disk_size                  = optional(number, 20)
+    desired_size               = optional(number, 1)
+    max_size                   = optional(number, 3)
+    min_size                   = optional(number, 1)
     max_unavailable_percentage = optional(number, 25)
-    launch_template_id        = optional(string)
-    launch_template_version   = optional(string, "$Latest")
+    launch_template_id         = optional(string)
+    launch_template_version    = optional(string, "$Latest")
     taints = optional(list(object({
       key    = string
       value  = string
@@ -137,19 +137,19 @@ variable "cluster_addons" {
   default = {
     # AWS VPC CNI
     vpc-cni = {
-      addon_version = null  # Use cluster default
+      addon_version = null # Use cluster default
     }
     # CoreDNS
     coredns = {
-      addon_version = null  # Use cluster default
+      addon_version = null # Use cluster default
     }
     # kube-proxy
     kube-proxy = {
-      addon_version = null  # Use cluster default
+      addon_version = null # Use cluster default
     }
     # AWS EBS CSI Driver
     aws-ebs-csi-driver = {
-      addon_version = null  # Use cluster default
+      addon_version = null # Use cluster default
     }
   }
 }
@@ -167,9 +167,9 @@ variable "enable_marketplace_addons" {
 variable "aws_load_balancer_controller" {
   description = "Configuration for AWS Load Balancer Controller"
   type = object({
-    enabled                = optional(bool, true)
-    version               = optional(string, "v2.6.0")
-    service_account_name  = optional(string, "aws-load-balancer-controller")
+    enabled              = optional(bool, true)
+    version              = optional(string, "v2.6.0")
+    service_account_name = optional(string, "aws-load-balancer-controller")
     namespace            = optional(string, "kube-system")
   })
   default = {}
@@ -178,10 +178,10 @@ variable "aws_load_balancer_controller" {
 variable "cluster_autoscaler" {
   description = "Configuration for Cluster Autoscaler"
   type = object({
-    enabled               = optional(bool, true)
+    enabled              = optional(bool, true)
     version              = optional(string, "1.27.0")
     service_account_name = optional(string, "cluster-autoscaler")
-    namespace           = optional(string, "kube-system")
+    namespace            = optional(string, "kube-system")
   })
   default = {}
 }
@@ -209,11 +209,11 @@ variable "ingress_nginx" {
 variable "external_dns" {
   description = "Configuration for External DNS"
   type = object({
-    enabled               = optional(bool, false)
+    enabled              = optional(bool, false)
     version              = optional(string, "1.13.0")
     service_account_name = optional(string, "external-dns")
-    namespace           = optional(string, "kube-system")
-    domain_filters      = optional(list(string), [])
+    namespace            = optional(string, "kube-system")
+    domain_filters       = optional(list(string), [])
   })
   default = {}
 }

@@ -2,24 +2,24 @@
 # SECURITY LAYER - UAT ENVIRONMENT CONFIGURATION
 # =============================================================================
 
-environment    = "uat"
-project_name   = "myproject"
-aws_region     = "us-east-1"
-aws_profile    = "default"
-state_bucket   = "myproject-terraform-state-uat"
+environment  = "uat"
+project_name = "myproject"
+aws_region   = "us-east-1"
+aws_profile  = "default"
+state_bucket = "myproject-terraform-state-uat"
 
 # KMS Configuration
 kms_keys = {
   general = {
-    description = "General purpose KMS key for uat"
+    description             = "General purpose KMS key for uat"
     deletion_window_in_days = 7
   }
   rds = {
-    description = "KMS key for RDS encryption in uat"
+    description             = "KMS key for RDS encryption in uat"
     deletion_window_in_days = 7
   }
   s3 = {
-    description = "KMS key for S3 encryption in uat"
+    description             = "KMS key for S3 encryption in uat"
     deletion_window_in_days = 7
   }
 }
@@ -27,21 +27,21 @@ kms_keys = {
 # IAM Configuration
 service_roles = {
   ec2 = {
-    service = "ec2"
+    service     = "ec2"
     description = "EC2 instance role for uat"
     policy_arns = [
       "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
     ]
   }
   lambda = {
-    service = "lambda"
+    service     = "lambda"
     description = "Lambda execution role for uat"
     policy_arns = [
       "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
     ]
   }
   rds-monitoring = {
-    service = "monitoring.rds"
+    service     = "monitoring.rds"
     description = "RDS Enhanced Monitoring role for uat"
     policy_arns = [
       "arn:aws:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole"
@@ -140,7 +140,7 @@ security_groups = {
 
 # WAF Configuration
 enable_waf = true
-waf_scope = "REGIONAL"
+waf_scope  = "REGIONAL"
 
 
 

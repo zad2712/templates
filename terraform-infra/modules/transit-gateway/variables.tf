@@ -70,8 +70,8 @@ variable "vpc_attachments" {
     vpc_id                                          = string
     subnet_ids                                      = list(string)
     dns_support                                     = optional(bool, true)
-    ipv6_support                                   = optional(bool, false)
-    appliance_mode_support                         = optional(string, "disable")
+    ipv6_support                                    = optional(bool, false)
+    appliance_mode_support                          = optional(string, "disable")
     transit_gateway_default_route_table_association = optional(bool, true)
     transit_gateway_default_route_table_propagation = optional(bool, true)
   }))
@@ -95,7 +95,7 @@ variable "transit_gateway_routes" {
   type = map(object({
     destination_cidr_block        = string
     transit_gateway_attachment_id = optional(string)
-    blackhole                    = optional(bool, false)
+    blackhole                     = optional(bool, false)
   }))
   default = {}
 }

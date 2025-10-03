@@ -25,7 +25,7 @@ resource "aws_wafv2_web_acl" "main" {
       for_each = var.default_action == "allow" ? [1] : []
       content {}
     }
-    
+
     dynamic "block" {
       for_each = var.default_action == "block" ? [1] : []
       content {}
@@ -43,12 +43,12 @@ resource "aws_wafv2_web_acl" "main" {
           for_each = rule.value.action == "allow" ? [1] : []
           content {}
         }
-        
+
         dynamic "block" {
           for_each = rule.value.action == "block" ? [1] : []
           content {}
         }
-        
+
         dynamic "count" {
           for_each = rule.value.action == "count" ? [1] : []
           content {}
@@ -63,7 +63,7 @@ resource "aws_wafv2_web_acl" "main" {
             vendor_name = rule.value.managed_rule_group.vendor_name
           }
         }
-        
+
         dynamic "rate_based_statement" {
           for_each = lookup(rule.value, "rate_based_statement", null) != null ? [1] : []
           content {

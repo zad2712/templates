@@ -6,7 +6,7 @@ variable "environment" {
   description = "Environment name (dev, qa, uat, prod)"
   type        = string
   validation {
-    condition = contains(["dev", "qa", "uat", "prod"], var.environment)
+    condition     = contains(["dev", "qa", "uat", "prod"], var.environment)
     error_message = "Environment must be one of: dev, qa, uat, prod."
   }
 }
@@ -171,30 +171,30 @@ variable "dynamodb_tables" {
     billing_mode = optional(string, "PAY_PER_REQUEST")
     hash_key     = string
     range_key    = optional(string)
-    
+
     attributes = list(object({
       name = string
       type = string
     }))
-    
+
     global_secondary_indexes = optional(list(object({
       name            = string
       hash_key        = string
       range_key       = optional(string)
       projection_type = string
     })), [])
-    
+
     local_secondary_indexes = optional(list(object({
       name            = string
       range_key       = string
       projection_type = string
     })), [])
-    
+
     ttl = optional(object({
       attribute_name = string
       enabled        = bool
     }))
-    
+
     stream_enabled   = optional(bool, false)
     stream_view_type = optional(string)
   }))
@@ -209,27 +209,27 @@ variable "s3_buckets" {
   description = "Map of S3 buckets to create"
   type = map(object({
     versioning_enabled = optional(bool, false)
-    
+
     lifecycle_configuration = optional(object({
       rules = list(object({
         id     = string
         status = string
-        
+
         expiration = optional(object({
           days = number
         }))
-        
+
         noncurrent_version_expiration = optional(object({
           days = number
         }))
-        
+
         transition = optional(list(object({
           days          = number
           storage_class = string
         })), [])
       }))
     }))
-    
+
     cors_rule = optional(list(object({
       allowed_headers = list(string)
       allowed_methods = list(string)
@@ -237,7 +237,7 @@ variable "s3_buckets" {
       expose_headers  = optional(list(string), [])
       max_age_seconds = optional(number, 3000)
     })), [])
-    
+
     public_read_access  = optional(bool, false)
     public_write_access = optional(bool, false)
   }))

@@ -5,15 +5,15 @@
 variable "roles" {
   description = "Map of IAM roles to create"
   type = map(object({
-    assume_role_policy     = string
+    assume_role_policy    = string
     description           = optional(string)
     force_detach_policies = optional(bool, false)
     max_session_duration  = optional(number, 3600)
-    path                 = optional(string, "/")
-    permissions_boundary = optional(string)
-    policy_arns          = optional(list(string), [])
-    inline_policies      = optional(map(string), {})
-    tags                 = optional(map(string), {})
+    path                  = optional(string, "/")
+    permissions_boundary  = optional(string)
+    policy_arns           = optional(list(string), [])
+    inline_policies       = optional(map(string), {})
+    tags                  = optional(map(string), {})
   }))
   default = {}
 }
@@ -23,8 +23,8 @@ variable "policies" {
   type = map(object({
     policy_document = string
     description     = optional(string)
-    path           = optional(string, "/")
-    tags           = optional(map(string), {})
+    path            = optional(string, "/")
+    tags            = optional(map(string), {})
   }))
   default = {}
 }
@@ -43,10 +43,10 @@ variable "users" {
   type = map(object({
     path                 = optional(string, "/")
     permissions_boundary = optional(string)
-    force_destroy       = optional(bool, false)
-    policy_arns         = optional(list(string), [])
-    groups             = optional(list(string), [])
-    tags               = optional(map(string), {})
+    force_destroy        = optional(bool, false)
+    policy_arns          = optional(list(string), [])
+    groups               = optional(list(string), [])
+    tags                 = optional(map(string), {})
   }))
   default = {}
 }

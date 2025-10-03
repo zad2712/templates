@@ -2,24 +2,24 @@
 # SECURITY LAYER - PROD ENVIRONMENT CONFIGURATION
 # =============================================================================
 
-environment    = "prod"
-project_name   = "myproject"
-aws_region     = "us-east-1"
-aws_profile    = "default"
-state_bucket   = "myproject-terraform-state-prod"
+environment  = "prod"
+project_name = "myproject"
+aws_region   = "us-east-1"
+aws_profile  = "default"
+state_bucket = "myproject-terraform-state-prod"
 
 # KMS Configuration
 kms_keys = {
   general = {
-    description = "General purpose KMS key for prod"
+    description             = "General purpose KMS key for prod"
     deletion_window_in_days = 30
   }
   rds = {
-    description = "KMS key for RDS encryption in prod"
+    description             = "KMS key for RDS encryption in prod"
     deletion_window_in_days = 30
   }
   s3 = {
-    description = "KMS key for S3 encryption in prod"
+    description             = "KMS key for S3 encryption in prod"
     deletion_window_in_days = 30
   }
 }
@@ -27,21 +27,21 @@ kms_keys = {
 # IAM Configuration
 service_roles = {
   ec2 = {
-    service = "ec2"
+    service     = "ec2"
     description = "EC2 instance role for prod"
     policy_arns = [
       "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
     ]
   }
   lambda = {
-    service = "lambda"
+    service     = "lambda"
     description = "Lambda execution role for prod"
     policy_arns = [
       "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
     ]
   }
   rds-monitoring = {
-    service = "monitoring.rds"
+    service     = "monitoring.rds"
     description = "RDS Enhanced Monitoring role for prod"
     policy_arns = [
       "arn:aws:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole"
@@ -140,7 +140,7 @@ security_groups = {
 
 # WAF Configuration
 enable_waf = true
-waf_scope = "REGIONAL"
+waf_scope  = "REGIONAL"
 
 
 

@@ -24,12 +24,12 @@ data "aws_region" "current" {}
 # =============================================================================
 
 resource "aws_kms_key" "main" {
-  description             = var.description
-  deletion_window_in_days = var.deletion_window_in_days
-  enable_key_rotation     = var.enable_key_rotation
-  key_usage              = var.key_usage
+  description              = var.description
+  deletion_window_in_days  = var.deletion_window_in_days
+  enable_key_rotation      = var.enable_key_rotation
+  key_usage                = var.key_usage
   customer_master_key_spec = var.customer_master_key_spec
-  
+
   policy = var.policy != null ? var.policy : jsonencode({
     Version = "2012-10-17"
     Id      = "kms-key-policy"
@@ -96,7 +96,7 @@ resource "aws_kms_key" "main" {
 
 resource "aws_kms_alias" "main" {
   count = var.create_alias ? 1 : 0
-  
+
   name          = var.alias_name != null ? var.alias_name : "alias/${var.key_name}"
   target_key_id = aws_kms_key.main.key_id
 }
@@ -109,9 +109,9 @@ resource "aws_kms_grant" "grants" {
   for_each = var.grants
 
   name              = each.key
-  key_id           = aws_kms_key.main.key_id
+  key_id            = aws_kms_key.main.key_id
   grantee_principal = each.value.grantee_principal
-  operations       = each.value.operations
+  operations        = each.value.operations
 
   dynamic "constraints" {
     for_each = lookup(each.value, "constraints", [])
@@ -122,5 +122,5 @@ resource "aws_kms_grant" "grants" {
   }
 
   retire_on_delete = lookup(each.value, "retire_on_delete", true)
-  token           = lookup(each.value, "token", null)
+  token            = lookup(each.value, "token", null)
 }

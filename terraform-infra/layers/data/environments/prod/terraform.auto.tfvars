@@ -2,35 +2,35 @@
 # DATA LAYER - PROD ENVIRONMENT CONFIGURATION
 # =============================================================================
 
-environment    = "prod"
-project_name   = "myproject"
-aws_region     = "us-east-1"
-aws_profile    = "default"
-state_bucket   = "myproject-terraform-state-prod"
+environment  = "prod"
+project_name = "myproject"
+aws_region   = "us-east-1"
+aws_profile  = "default"
+state_bucket = "myproject-terraform-state-prod"
 
 # RDS Configuration
-enable_rds = true
-rds_engine = "mysql"
-rds_engine_version = "8.0"
-rds_instance_class = "db.t3.large"
-rds_allocated_storage = 100
-rds_max_allocated_storage = 1000
-rds_database_name = "appdb"
-rds_username = "admin"
-rds_password = "CHANGE-THIS-PASSWORD!"  # Use AWS Secrets Manager in production
+enable_rds                  = true
+rds_engine                  = "mysql"
+rds_engine_version          = "8.0"
+rds_instance_class          = "db.t3.large"
+rds_allocated_storage       = 100
+rds_max_allocated_storage   = 1000
+rds_database_name           = "appdb"
+rds_username                = "admin"
+rds_password                = "CHANGE-THIS-PASSWORD!" # Use AWS Secrets Manager in production
 rds_backup_retention_period = 30
-rds_backup_window = "03:00-04:00"
-rds_maintenance_window = "sun:04:00-sun:05:00"
-rds_monitoring_interval = 60
+rds_backup_window           = "03:00-04:00"
+rds_maintenance_window      = "sun:04:00-sun:05:00"
+rds_monitoring_interval     = 60
 enable_performance_insights = true
 
 # ElastiCache Configuration
-enable_elasticache = true
-redis_node_type = "cache.t3.large"
-redis_num_nodes = 3
-redis_parameter_group = "default.redis7"
+enable_elasticache             = true
+redis_node_type                = "cache.t3.large"
+redis_num_nodes                = 3
+redis_parameter_group          = "default.redis7"
 redis_snapshot_retention_limit = 30
-redis_snapshot_window = "03:00-05:00"
+redis_snapshot_window          = "03:00-05:00"
 
 # DynamoDB Configuration
 dynamodb_tables = {
@@ -48,7 +48,7 @@ dynamodb_tables = {
     }
   }
   user_profiles = {
-    hash_key = "user_id"
+    hash_key  = "user_id"
     range_key = "profile_type"
     attributes = [
       {
@@ -74,7 +74,7 @@ dynamodb_tables = {
     ]
   }
   audit_logs = {
-    hash_key = "log_id"
+    hash_key  = "log_id"
     range_key = "timestamp"
     attributes = [
       {
@@ -96,13 +96,13 @@ dynamodb_tables = {
 # S3 Configuration
 s3_buckets = {
   app-data = {
-    versioning_enabled = true
-    public_read_access = false
+    versioning_enabled  = true
+    public_read_access  = false
     public_write_access = false
     lifecycle_configuration = {
       rules = [
         {
-          id = "intelligent_tiering"
+          id     = "intelligent_tiering"
           status = "Enabled"
           transition = [
             {
@@ -123,13 +123,13 @@ s3_buckets = {
     }
   }
   app-logs = {
-    versioning_enabled = true
-    public_read_access = false
+    versioning_enabled  = true
+    public_read_access  = false
     public_write_access = false
     lifecycle_configuration = {
       rules = [
         {
-          id = "log_retention"
+          id     = "log_retention"
           status = "Enabled"
           expiration = {
             days = 365
@@ -142,13 +142,13 @@ s3_buckets = {
     }
   }
   app-backups = {
-    versioning_enabled = true
-    public_read_access = false
+    versioning_enabled  = true
+    public_read_access  = false
     public_write_access = false
     lifecycle_configuration = {
       rules = [
         {
-          id = "backup_retention"
+          id     = "backup_retention"
           status = "Enabled"
           transition = [
             {
@@ -165,8 +165,8 @@ s3_buckets = {
     }
   }
   app-static-content = {
-    versioning_enabled = true
-    public_read_access = true
+    versioning_enabled  = true
+    public_read_access  = true
     public_write_access = false
   }
 }

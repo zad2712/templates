@@ -57,10 +57,10 @@ resource "aws_security_group_rule" "ingress_rules" {
 
   # Source configuration (mutually exclusive)
   cidr_blocks              = lookup(each.value, "cidr_blocks", null)
-  ipv6_cidr_blocks        = lookup(each.value, "ipv6_cidr_blocks", null)
-  prefix_list_ids         = lookup(each.value, "prefix_list_ids", null)
+  ipv6_cidr_blocks         = lookup(each.value, "ipv6_cidr_blocks", null)
+  prefix_list_ids          = lookup(each.value, "prefix_list_ids", null)
   source_security_group_id = lookup(each.value, "source_security_group_id", null)
-  self                    = lookup(each.value, "self", null)
+  self                     = lookup(each.value, "self", null)
 }
 
 # =============================================================================
@@ -81,10 +81,10 @@ resource "aws_security_group_rule" "egress_rules" {
 
   # Destination configuration (mutually exclusive)
   cidr_blocks              = lookup(each.value, "cidr_blocks", null)
-  ipv6_cidr_blocks        = lookup(each.value, "ipv6_cidr_blocks", null)
-  prefix_list_ids         = lookup(each.value, "prefix_list_ids", null)
+  ipv6_cidr_blocks         = lookup(each.value, "ipv6_cidr_blocks", null)
+  prefix_list_ids          = lookup(each.value, "prefix_list_ids", null)
   source_security_group_id = lookup(each.value, "source_security_group_id", null)
-  self                    = lookup(each.value, "self", null)
+  self                     = lookup(each.value, "self", null)
 }
 
 # =============================================================================

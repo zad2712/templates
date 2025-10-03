@@ -6,7 +6,7 @@ variable "environment" {
   description = "Environment name (dev, qa, uat, prod)"
   type        = string
   validation {
-    condition = contains(["dev", "qa", "uat", "prod"], var.environment)
+    condition     = contains(["dev", "qa", "uat", "prod"], var.environment)
     error_message = "Environment must be one of: dev, qa, uat, prod."
   }
 }
@@ -40,8 +40,8 @@ variable "state_bucket" {
 variable "kms_keys" {
   description = "Map of KMS keys to create"
   type = map(object({
-    description = string
-    policy      = optional(string)
+    description             = string
+    policy                  = optional(string)
     deletion_window_in_days = optional(number, 7)
   }))
   default = {
@@ -64,10 +64,10 @@ variable "kms_keys" {
 variable "application_roles" {
   description = "Map of application-specific IAM roles"
   type = map(object({
-    description    = string
+    description        = string
     assume_role_policy = string
-    policies       = list(string)
-    policy_arns    = optional(list(string), [])
+    policies           = list(string)
+    policy_arns        = optional(list(string), [])
   }))
   default = {}
 }
@@ -75,10 +75,10 @@ variable "application_roles" {
 variable "service_roles" {
   description = "Map of AWS service IAM roles (EC2, Lambda, ECS, etc.)"
   type = map(object({
-    service        = string
-    description    = string
-    policies       = optional(list(string), [])
-    policy_arns    = optional(list(string), [])
+    service     = string
+    description = string
+    policies    = optional(list(string), [])
+    policy_arns = optional(list(string), [])
   }))
   default = {}
 }
@@ -92,20 +92,20 @@ variable "security_groups" {
   type = map(object({
     description = string
     ingress = optional(list(object({
-      from_port   = number
-      to_port     = number
-      protocol    = string
-      cidr_blocks = optional(list(string), [])
+      from_port       = number
+      to_port         = number
+      protocol        = string
+      cidr_blocks     = optional(list(string), [])
       security_groups = optional(list(string), [])
-      description = optional(string)
+      description     = optional(string)
     })), [])
     egress = optional(list(object({
-      from_port   = number
-      to_port     = number
-      protocol    = string
-      cidr_blocks = optional(list(string), [])
+      from_port       = number
+      to_port         = number
+      protocol        = string
+      cidr_blocks     = optional(list(string), [])
       security_groups = optional(list(string), [])
-      description = optional(string)
+      description     = optional(string)
     })), [])
   }))
   default = {}
@@ -126,7 +126,7 @@ variable "waf_scope" {
   type        = string
   default     = "REGIONAL"
   validation {
-    condition = contains(["CLOUDFRONT", "REGIONAL"], var.waf_scope)
+    condition     = contains(["CLOUDFRONT", "REGIONAL"], var.waf_scope)
     error_message = "WAF scope must be CLOUDFRONT or REGIONAL."
   }
 }
@@ -134,8 +134,8 @@ variable "waf_scope" {
 variable "waf_rules" {
   description = "WAF rules configuration"
   type = map(object({
-    priority = number
-    action   = string
+    priority  = number
+    action    = string
     rule_type = string
     statement = any
   }))
@@ -149,9 +149,9 @@ variable "waf_rules" {
 variable "secrets" {
   description = "Map of secrets to create in AWS Secrets Manager"
   type = map(object({
-    description = string
-    secret_string = optional(string)
-    secret_binary = optional(string)
+    description             = string
+    secret_string           = optional(string)
+    secret_binary           = optional(string)
     recovery_window_in_days = optional(number, 7)
   }))
   default = {}

@@ -62,8 +62,8 @@ resource "aws_ecs_cluster_capacity_providers" "this" {
     for_each = var.default_capacity_provider_strategy
     content {
       capacity_provider = default_capacity_provider_strategy.value.capacity_provider
-      weight           = lookup(default_capacity_provider_strategy.value, "weight", null)
-      base            = lookup(default_capacity_provider_strategy.value, "base", null)
+      weight            = lookup(default_capacity_provider_strategy.value, "weight", null)
+      base              = lookup(default_capacity_provider_strategy.value, "base", null)
     }
   }
 
@@ -85,9 +85,9 @@ resource "aws_ecs_capacity_provider" "asg" {
       content {
         maximum_scaling_step_size = lookup(managed_scaling.value, "maximum_scaling_step_size", null)
         minimum_scaling_step_size = lookup(managed_scaling.value, "minimum_scaling_step_size", null)
-        status                   = lookup(managed_scaling.value, "status", null)
-        target_capacity          = lookup(managed_scaling.value, "target_capacity", null)
-        instance_warmup_period   = lookup(managed_scaling.value, "instance_warmup_period", null)
+        status                    = lookup(managed_scaling.value, "status", null)
+        target_capacity           = lookup(managed_scaling.value, "target_capacity", null)
+        instance_warmup_period    = lookup(managed_scaling.value, "instance_warmup_period", null)
       }
     }
   }
@@ -102,13 +102,13 @@ resource "aws_ecs_task_definition" "this" {
   family                   = each.key
   container_definitions    = jsonencode(each.value.container_definitions)
   requires_compatibilities = each.value.requires_compatibilities
-  network_mode            = lookup(each.value, "network_mode", "awsvpc")
-  cpu                     = lookup(each.value, "cpu", null)
-  memory                  = lookup(each.value, "memory", null)
-  execution_role_arn      = lookup(each.value, "execution_role_arn", null)
-  task_role_arn          = lookup(each.value, "task_role_arn", null)
-  pid_mode               = lookup(each.value, "pid_mode", null)
-  ipc_mode               = lookup(each.value, "ipc_mode", null)
+  network_mode             = lookup(each.value, "network_mode", "awsvpc")
+  cpu                      = lookup(each.value, "cpu", null)
+  memory                   = lookup(each.value, "memory", null)
+  execution_role_arn       = lookup(each.value, "execution_role_arn", null)
+  task_role_arn            = lookup(each.value, "task_role_arn", null)
+  pid_mode                 = lookup(each.value, "pid_mode", null)
+  ipc_mode                 = lookup(each.value, "ipc_mode", null)
 
   # Placement constraints
   dynamic "placement_constraints" {
@@ -159,7 +159,7 @@ resource "aws_ecs_task_definition" "this" {
             for_each = lookup(efs_volume_configuration.value, "authorization_config", null) != null ? [efs_volume_configuration.value.authorization_config] : []
             content {
               access_point_id = lookup(authorization_config.value, "access_point_id", null)
-              iam            = lookup(authorization_config.value, "iam", null)
+              iam             = lookup(authorization_config.value, "iam", null)
             }
           }
         }
@@ -173,7 +173,7 @@ resource "aws_ecs_task_definition" "this" {
 
           authorization_config {
             credentials_parameter = fsx_windows_file_server_volume_configuration.value.authorization_config.credentials_parameter
-            domain               = fsx_windows_file_server_volume_configuration.value.authorization_config.domain
+            domain                = fsx_windows_file_server_volume_configuration.value.authorization_config.domain
           }
         }
       }
@@ -225,8 +225,8 @@ resource "aws_ecs_service" "this" {
     for_each = lookup(each.value, "capacity_provider_strategy", [])
     content {
       capacity_provider = capacity_provider_strategy.value.capacity_provider
-      weight           = lookup(capacity_provider_strategy.value, "weight", null)
-      base            = lookup(capacity_provider_strategy.value, "base", null)
+      weight            = lookup(capacity_provider_strategy.value, "weight", null)
+      base              = lookup(capacity_provider_strategy.value, "base", null)
     }
   }
 
@@ -272,7 +272,7 @@ resource "aws_ecs_service" "this" {
     for_each = lookup(each.value, "service_registries", null) != null ? [each.value.service_registries] : []
     content {
       registry_arn   = service_registries.value.registry_arn
-      port          = lookup(service_registries.value, "port", null)
+      port           = lookup(service_registries.value, "port", null)
       container_name = lookup(service_registries.value, "container_name", null)
       container_port = lookup(service_registries.value, "container_port", null)
     }
@@ -322,8 +322,8 @@ resource "aws_ecs_service" "this" {
       dynamic "service" {
         for_each = lookup(service_connect_configuration.value, "service", [])
         content {
-          port_name      = service.value.port_name
-          discovery_name = lookup(service.value, "discovery_name", null)
+          port_name             = service.value.port_name
+          discovery_name        = lookup(service.value, "discovery_name", null)
           ingress_port_override = lookup(service.value, "ingress_port_override", null)
 
           dynamic "client_alias" {

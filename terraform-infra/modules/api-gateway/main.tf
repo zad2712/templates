@@ -197,21 +197,21 @@ resource "aws_api_gateway_integration" "this" {
 
   # Integration configuration
   integration_http_method = each.value.integration.integration_http_method
-  type                   = each.value.integration.type
-  uri                    = each.value.integration.uri
+  type                    = each.value.integration.type
+  uri                     = each.value.integration.uri
 
   # Connection configuration
   connection_type = each.value.integration.connection_type
   connection_id   = each.value.integration.connection_id
 
   # Request configuration
-  request_templates   = each.value.integration.request_templates
-  request_parameters  = each.value.integration.request_parameters
+  request_templates    = each.value.integration.request_templates
+  request_parameters   = each.value.integration.request_parameters
   passthrough_behavior = each.value.integration.passthrough_behavior
 
   # Cache configuration
   cache_key_parameters = each.value.integration.cache_key_parameters
-  cache_namespace     = each.value.integration.cache_namespace
+  cache_namespace      = each.value.integration.cache_namespace
 
   # Timeout configuration
   timeout_milliseconds = each.value.integration.timeout_milliseconds
@@ -233,12 +233,12 @@ resource "aws_api_gateway_method_response" "this" {
   for_each = merge([
     for method_key, method in var.api_methods : {
       for response_key, response in method.responses : "${method_key}-${response_key}" => {
-        method_key    = method_key
-        resource_key  = method.resource_key
-        http_method   = method.http_method
-        status_code   = response.status_code
-        response_models      = response.response_models
-        response_parameters  = response.response_parameters
+        method_key          = method_key
+        resource_key        = method.resource_key
+        http_method         = method.http_method
+        status_code         = response.status_code
+        response_models     = response.response_models
+        response_parameters = response.response_parameters
       }
     }
   ]...)
@@ -257,14 +257,14 @@ resource "aws_api_gateway_integration_response" "this" {
   for_each = merge([
     for method_key, method in var.api_methods : {
       for response_key, response in method.responses : "${method_key}-${response_key}" => {
-        method_key    = method_key
-        resource_key  = method.resource_key
-        http_method   = method.http_method
-        status_code   = response.status_code
-        selection_pattern        = response.integration_response.selection_pattern
-        response_templates      = response.integration_response.response_templates
-        response_parameters     = response.integration_response.response_parameters
-        content_handling        = response.integration_response.content_handling
+        method_key          = method_key
+        resource_key        = method.resource_key
+        http_method         = method.http_method
+        status_code         = response.status_code
+        selection_pattern   = response.integration_response.selection_pattern
+        response_templates  = response.integration_response.response_templates
+        response_parameters = response.integration_response.response_parameters
+        content_handling    = response.integration_response.content_handling
       }
     }
   ]...)
@@ -287,8 +287,8 @@ resource "aws_api_gateway_request_validator" "this" {
   for_each = var.request_validators
 
   rest_api_id                 = aws_api_gateway_rest_api.this.id
-  name                       = each.value.name
-  validate_request_body      = each.value.validate_request_body
+  name                        = each.value.name
+  validate_request_body       = each.value.validate_request_body
   validate_request_parameters = each.value.validate_request_parameters
 }
 
@@ -307,11 +307,11 @@ resource "aws_api_gateway_authorizer" "this" {
   for_each = var.api_authorizers
 
   name                   = each.value.name
-  rest_api_id           = aws_api_gateway_rest_api.this.id
-  type                  = each.value.type
-  authorizer_uri        = each.value.authorizer_uri
+  rest_api_id            = aws_api_gateway_rest_api.this.id
+  type                   = each.value.type
+  authorizer_uri         = each.value.authorizer_uri
   authorizer_credentials = each.value.authorizer_credentials
-  
+
   # For Lambda authorizers
   authorizer_result_ttl_in_seconds = each.value.authorizer_result_ttl_in_seconds
   identity_source                  = each.value.identity_source
@@ -325,8 +325,8 @@ resource "aws_api_gateway_authorizer" "this" {
 resource "aws_api_gateway_usage_plan" "this" {
   for_each = var.usage_plans
 
-  name         = each.value.name
-  description  = each.value.description
+  name        = each.value.name
+  description = each.value.description
 
   dynamic "api_stages" {
     for_each = each.value.api_stages
@@ -365,10 +365,10 @@ resource "aws_api_gateway_usage_plan" "this" {
 resource "aws_api_gateway_api_key" "this" {
   for_each = var.api_keys
 
-  name         = each.value.name
-  description  = each.value.description
-  enabled      = each.value.enabled
-  value        = each.value.value
+  name        = each.value.name
+  description = each.value.description
+  enabled     = each.value.enabled
+  value       = each.value.value
 
   tags = var.tags
 }
@@ -386,9 +386,9 @@ resource "aws_api_gateway_usage_plan_key" "this" {
 resource "aws_api_gateway_domain_name" "this" {
   count = var.domain_name != null ? 1 : 0
 
-  domain_name              = var.domain_name
-  certificate_arn          = var.certificate_arn
-  security_policy          = var.domain_security_policy
+  domain_name     = var.domain_name
+  certificate_arn = var.certificate_arn
+  security_policy = var.domain_security_policy
   endpoint_configuration {
     types = var.domain_endpoint_types
   }

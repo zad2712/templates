@@ -74,11 +74,11 @@ output "api_methods" {
   description = "Map of API Gateway methods"
   value = {
     for key, method in aws_api_gateway_method.this : key => {
-      id                   = method.id
-      resource_id          = method.resource_id
-      http_method          = method.http_method
-      authorization        = method.authorization
-      api_key_required     = method.api_key_required
+      id               = method.id
+      resource_id      = method.resource_id
+      http_method      = method.http_method
+      authorization    = method.authorization
+      api_key_required = method.api_key_required
     }
   }
 }
@@ -150,13 +150,13 @@ output "request_validators" {
 output "domain_name" {
   description = "Custom domain name configuration"
   value = var.domain_name != null ? {
-    domain_name                = aws_api_gateway_domain_name.this[0].domain_name
-    certificate_arn           = aws_api_gateway_domain_name.this[0].certificate_arn
-    cloudfront_domain_name    = aws_api_gateway_domain_name.this[0].cloudfront_domain_name
-    cloudfront_zone_id        = aws_api_gateway_domain_name.this[0].cloudfront_zone_id
-    regional_certificate_arn  = aws_api_gateway_domain_name.this[0].regional_certificate_arn
-    regional_domain_name      = aws_api_gateway_domain_name.this[0].regional_domain_name
-    regional_zone_id          = aws_api_gateway_domain_name.this[0].regional_zone_id
+    domain_name              = aws_api_gateway_domain_name.this[0].domain_name
+    certificate_arn          = aws_api_gateway_domain_name.this[0].certificate_arn
+    cloudfront_domain_name   = aws_api_gateway_domain_name.this[0].cloudfront_domain_name
+    cloudfront_zone_id       = aws_api_gateway_domain_name.this[0].cloudfront_zone_id
+    regional_certificate_arn = aws_api_gateway_domain_name.this[0].regional_certificate_arn
+    regional_domain_name     = aws_api_gateway_domain_name.this[0].regional_domain_name
+    regional_zone_id         = aws_api_gateway_domain_name.this[0].regional_zone_id
   } : null
 }
 

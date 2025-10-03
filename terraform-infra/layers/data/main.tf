@@ -4,7 +4,7 @@
 
 terraform {
   required_version = ">= 1.9.0"
-  
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -53,11 +53,11 @@ module "rds" {
   engine         = var.rds_engine
   engine_version = var.rds_engine_version
   instance_class = var.rds_instance_class
-  
+
   allocated_storage     = var.rds_allocated_storage
   max_allocated_storage = var.rds_max_allocated_storage
   storage_encrypted     = true
-  kms_key_id           = data.terraform_remote_state.security.outputs.kms_keys["rds"].arn
+  kms_key_id            = data.terraform_remote_state.security.outputs.kms_keys["rds"].arn
 
   # Database credentials
   db_name  = var.rds_database_name
@@ -68,13 +68,13 @@ module "rds" {
   vpc_security_group_ids = [
     data.terraform_remote_state.security.outputs.security_group_ids["rds"]
   ]
-  
+
   db_subnet_group_name = module.rds_subnet_group.name
 
   # Backup configuration
   backup_retention_period = var.rds_backup_retention_period
-  backup_window          = var.rds_backup_window
-  maintenance_window     = var.rds_maintenance_window
+  backup_window           = var.rds_backup_window
+  maintenance_window      = var.rds_maintenance_window
 
   # Multi-AZ deployment for production
   multi_az = var.environment == "prod" ? true : false
@@ -111,9 +111,9 @@ module "elasticache_redis" {
   cluster_id = "${var.project_name}-${var.environment}-redis"
 
   # Redis configuration
-  engine         = "redis"
-  node_type      = var.redis_node_type
-  num_cache_nodes = var.redis_num_nodes
+  engine               = "redis"
+  node_type            = var.redis_node_type
+  num_cache_nodes      = var.redis_num_nodes
   parameter_group_name = var.redis_parameter_group
 
   # Network configuration
@@ -124,7 +124,7 @@ module "elasticache_redis" {
 
   # Backup configuration
   snapshot_retention_limit = var.redis_snapshot_retention_limit
-  snapshot_window         = var.redis_snapshot_window
+  snapshot_window          = var.redis_snapshot_window
 
   # Multi-AZ
   multi_az_enabled = var.environment == "prod" ? true : false

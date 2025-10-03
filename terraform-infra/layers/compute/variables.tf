@@ -6,7 +6,7 @@ variable "environment" {
   description = "Environment name (dev, qa, uat, prod)"
   type        = string
   validation {
-    condition = contains(["dev", "qa", "uat", "prod"], var.environment)
+    condition     = contains(["dev", "qa", "uat", "prod"], var.environment)
     error_message = "Environment must be one of: dev, qa, uat, prod."
   }
 }
@@ -64,14 +64,14 @@ variable "enable_container_insights" {
 variable "lambda_functions" {
   description = "Map of Lambda functions to create"
   type = map(object({
-    description  = string
-    runtime      = string
-    handler      = string
-    filename     = optional(string)
-    s3_bucket    = optional(string)
-    s3_key       = optional(string)
-    memory_size  = optional(number, 128)
-    timeout      = optional(number, 3)
+    description           = string
+    runtime               = string
+    handler               = string
+    filename              = optional(string)
+    s3_bucket             = optional(string)
+    s3_key                = optional(string)
+    memory_size           = optional(number, 128)
+    timeout               = optional(number, 3)
     environment_variables = optional(map(string), {})
   }))
   default = {}
@@ -138,16 +138,16 @@ variable "eks_kms_key_id" {
 variable "eks_node_groups" {
   description = "Map of node group configurations"
   type = map(object({
-    ami_type        = optional(string, "AL2_x86_64")
-    instance_types  = optional(list(string), ["t3.medium"])
-    capacity_type   = optional(string, "SPOT")
-    disk_size       = optional(number, 20)
-    desired_size    = optional(number, 1)
-    max_size        = optional(number, 3)
-    min_size        = optional(number, 1)
+    ami_type                   = optional(string, "AL2_x86_64")
+    instance_types             = optional(list(string), ["t3.medium"])
+    capacity_type              = optional(string, "SPOT")
+    disk_size                  = optional(number, 20)
+    desired_size               = optional(number, 1)
+    max_size                   = optional(number, 3)
+    min_size                   = optional(number, 1)
     max_unavailable_percentage = optional(number, 25)
-    labels          = optional(map(string), {})
-    taints          = optional(list(object({
+    labels                     = optional(map(string), {})
+    taints = optional(list(object({
       key    = string
       value  = string
       effect = string
@@ -311,7 +311,7 @@ variable "api_gateway_endpoint_types" {
   description = "List of endpoint types for API Gateway"
   type        = list(string)
   default     = ["REGIONAL"]
-  
+
   validation {
     condition = alltrue([
       for type in var.api_gateway_endpoint_types : contains(["EDGE", "REGIONAL", "PRIVATE"], type)
@@ -413,32 +413,32 @@ variable "api_gateway_methods" {
   description = "Map of API Gateway methods"
   type = map(object({
     resource_key         = string
-    http_method         = string
-    authorization       = string
-    authorizer_id       = optional(string)
-    api_key_required    = optional(bool, false)
+    http_method          = string
+    authorization        = string
+    authorizer_id        = optional(string)
+    api_key_required     = optional(bool, false)
     request_validator_id = optional(string)
-    request_parameters  = optional(map(bool), {})
-    request_models      = optional(map(string), {})
-    
+    request_parameters   = optional(map(bool), {})
+    request_models       = optional(map(string), {})
+
     integration = object({
       type                    = string
       integration_http_method = optional(string)
-      uri                    = optional(string)
-      connection_type        = optional(string, "INTERNET")
-      connection_id          = optional(string)
-      credentials            = optional(string)
-      request_templates      = optional(map(string), {})
-      request_parameters     = optional(map(string), {})
-      passthrough_behavior   = optional(string, "WHEN_NO_MATCH")
-      cache_key_parameters   = optional(list(string), [])
-      cache_namespace        = optional(string)
-      timeout_milliseconds   = optional(number, 29000)
+      uri                     = optional(string)
+      connection_type         = optional(string, "INTERNET")
+      connection_id           = optional(string)
+      credentials             = optional(string)
+      request_templates       = optional(map(string), {})
+      request_parameters      = optional(map(string), {})
+      passthrough_behavior    = optional(string, "WHEN_NO_MATCH")
+      cache_key_parameters    = optional(list(string), [])
+      cache_namespace         = optional(string)
+      timeout_milliseconds    = optional(number, 29000)
       tls_config = optional(object({
         insecure_skip_verification = bool
       }))
     })
-    
+
     responses = map(object({
       status_code         = string
       response_models     = optional(map(string), {})
@@ -478,13 +478,13 @@ variable "api_gateway_authorizers" {
   description = "Map of API Gateway authorizers"
   type = map(object({
     name                             = string
-    type                            = string
-    authorizer_uri                  = optional(string)
-    authorizer_credentials          = optional(string)
+    type                             = string
+    authorizer_uri                   = optional(string)
+    authorizer_credentials           = optional(string)
     authorizer_result_ttl_in_seconds = optional(number, 300)
-    identity_source                 = optional(string)
-    identity_validation_expression  = optional(string)
-    provider_arns                   = optional(list(string), [])
+    identity_source                  = optional(string)
+    identity_validation_expression   = optional(string)
+    provider_arns                    = optional(list(string), [])
   }))
   default = {}
 }
@@ -494,7 +494,7 @@ variable "api_gateway_usage_plans" {
   type = map(object({
     name        = string
     description = optional(string)
-    
+
     api_stages = list(object({
       stage = string
       throttle = optional(object({
@@ -503,13 +503,13 @@ variable "api_gateway_usage_plans" {
         burst_limit = number
       }))
     }))
-    
+
     quota_settings = optional(object({
       limit  = number
       offset = optional(number, 0)
       period = string
     }))
-    
+
     throttle_settings = optional(object({
       rate_limit  = number
       burst_limit = number
@@ -532,8 +532,8 @@ variable "api_gateway_api_keys" {
 variable "api_gateway_usage_plan_keys" {
   description = "Map of usage plan key associations"
   type = map(object({
-    api_key_name     = string
-    usage_plan_name  = string
+    api_key_name    = string
+    usage_plan_name = string
   }))
   default = {}
 }

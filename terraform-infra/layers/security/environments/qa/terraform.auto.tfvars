@@ -2,24 +2,24 @@
 # SECURITY LAYER - QA ENVIRONMENT CONFIGURATION
 # =============================================================================
 
-environment    = "qa"
-project_name   = "myproject"
-aws_region     = "us-east-1"
-aws_profile    = "default"
-state_bucket   = "myproject-terraform-state-qa"
+environment  = "qa"
+project_name = "myproject"
+aws_region   = "us-east-1"
+aws_profile  = "default"
+state_bucket = "myproject-terraform-state-qa"
 
 # KMS Configuration
 kms_keys = {
   general = {
-    description = "General purpose KMS key for qa"
+    description             = "General purpose KMS key for qa"
     deletion_window_in_days = 7
   }
   rds = {
-    description = "KMS key for RDS encryption in qa"
+    description             = "KMS key for RDS encryption in qa"
     deletion_window_in_days = 7
   }
   s3 = {
-    description = "KMS key for S3 encryption in qa"
+    description             = "KMS key for S3 encryption in qa"
     deletion_window_in_days = 7
   }
 }
@@ -27,21 +27,21 @@ kms_keys = {
 # IAM Configuration
 service_roles = {
   ec2 = {
-    service = "ec2"
+    service     = "ec2"
     description = "EC2 instance role for qa"
     policy_arns = [
       "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
     ]
   }
   lambda = {
-    service = "lambda"
+    service     = "lambda"
     description = "Lambda execution role for qa"
     policy_arns = [
       "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
     ]
   }
   rds-monitoring = {
-    service = "monitoring.rds"
+    service     = "monitoring.rds"
     description = "RDS Enhanced Monitoring role for qa"
     policy_arns = [
       "arn:aws:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole"
@@ -140,7 +140,7 @@ security_groups = {
 
 # WAF Configuration
 enable_waf = false
-waf_scope = "REGIONAL"
+waf_scope  = "REGIONAL"
 
 
 

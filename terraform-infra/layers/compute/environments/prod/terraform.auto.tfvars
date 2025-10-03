@@ -2,67 +2,67 @@
 # COMPUTE LAYER - PROD ENVIRONMENT CONFIGURATION
 # =============================================================================
 
-environment    = "prod"
-project_name   = "myproject"
-aws_region     = "us-east-1"
-aws_profile    = "default"
-state_bucket   = "myproject-terraform-state-prod"
+environment  = "prod"
+project_name = "myproject"
+aws_region   = "us-east-1"
+aws_profile  = "default"
+state_bucket = "myproject-terraform-state-prod"
 
 
 
 # ECS Configuration
-enable_ecs = true
-ecs_capacity_providers = ["FARGATE", "FARGATE_SPOT"]
+enable_ecs                = true
+ecs_capacity_providers    = ["FARGATE", "FARGATE_SPOT"]
 enable_container_insights = true
 
 # Lambda Configuration
 lambda_functions = {}
 
 # EKS Configuration - Production Environment
-enable_eks = true
+enable_eks          = true
 eks_cluster_version = "1.31"
 
 # Cluster endpoint configuration (Production - high security)
-eks_endpoint_private_access = true
-eks_endpoint_public_access = false  # Private only for production
-eks_endpoint_public_access_cidrs = []  # No public access
+eks_endpoint_private_access      = true
+eks_endpoint_public_access       = false # Private only for production
+eks_endpoint_public_access_cidrs = []    # No public access
 
 # Logging configuration (comprehensive production logging)
-eks_cluster_log_types = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
-eks_log_retention_days = 90  # Extended retention for compliance
+eks_cluster_log_types  = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
+eks_log_retention_days = 90 # Extended retention for compliance
 
 # Encryption
 eks_encryption_enabled = true
-eks_kms_key_id = ""  # Use dedicated production KMS key
+eks_kms_key_id         = "" # Use dedicated production KMS key
 
 # Node groups configuration (production-grade)
 eks_node_groups = {
   general = {
-    ami_type        = "AL2_x86_64"
-    instance_types  = ["m5.large", "m5.xlarge"]
-    capacity_type   = "ON_DEMAND"  # Stable for production
-    disk_size       = 100
-    desired_size    = 3
-    max_size        = 10
-    min_size        = 3
+    ami_type                   = "AL2_x86_64"
+    instance_types             = ["m5.large", "m5.xlarge"]
+    capacity_type              = "ON_DEMAND" # Stable for production
+    disk_size                  = 100
+    desired_size               = 3
+    max_size                   = 10
+    min_size                   = 3
     max_unavailable_percentage = 25
     labels = {
-      role = "general"
+      role        = "general"
       environment = "prod"
     }
     taints = []
   },
   monitoring = {
-    ami_type        = "AL2_x86_64"
-    instance_types  = ["t3.medium"]
-    capacity_type   = "ON_DEMAND"
-    disk_size       = 50
-    desired_size    = 2
-    max_size        = 3
-    min_size        = 1
+    ami_type                   = "AL2_x86_64"
+    instance_types             = ["t3.medium"]
+    capacity_type              = "ON_DEMAND"
+    disk_size                  = 50
+    desired_size               = 2
+    max_size                   = 3
+    min_size                   = 1
     max_unavailable_percentage = 50
     labels = {
-      role = "monitoring"
+      role        = "monitoring"
       environment = "prod"
     }
     taints = [
@@ -81,7 +81,7 @@ eks_fargate_profiles = {
     selectors = [
       {
         namespace = "kube-system"
-        labels = {}
+        labels    = {}
       }
     ]
   },
@@ -114,41 +114,41 @@ eks_addons = {
 }
 
 # Marketplace Addons (full production suite)
-enable_aws_load_balancer_controller = true
+enable_aws_load_balancer_controller        = true
 aws_load_balancer_controller_chart_version = "1.8.1"
-aws_load_balancer_controller_namespace = "kube-system"
+aws_load_balancer_controller_namespace     = "kube-system"
 
-enable_cluster_autoscaler = true
+enable_cluster_autoscaler        = true
 cluster_autoscaler_chart_version = "9.37.0"
-cluster_autoscaler_namespace = "kube-system"
+cluster_autoscaler_namespace     = "kube-system"
 
-enable_metrics_server = true
+enable_metrics_server        = true
 metrics_server_chart_version = "3.12.1"
-metrics_server_namespace = "kube-system"
+metrics_server_namespace     = "kube-system"
 
 enable_aws_node_termination_handler = true
-enable_external_dns = true
-external_dns_domain_name = "example.com"  # Production domain
+enable_external_dns                 = true
+external_dns_domain_name            = "example.com" # Production domain
 
 # =============================================================================
 # API GATEWAY CONFIGURATION - PRODUCTION
 # =============================================================================
 
 # Production API Gateway with full features
-enable_api_gateway = true
-api_gateway_stage_name = "v1"
-api_gateway_endpoint_types = ["REGIONAL"]
-api_gateway_disable_execute_api_endpoint = false  # Set to true if using custom domain only
+enable_api_gateway                       = true
+api_gateway_stage_name                   = "v1"
+api_gateway_endpoint_types               = ["REGIONAL"]
+api_gateway_disable_execute_api_endpoint = false # Set to true if using custom domain only
 
 # Production logging and monitoring
-api_gateway_enable_access_logging = true
+api_gateway_enable_access_logging    = true
 api_gateway_enable_execution_logging = false
-api_gateway_log_retention_days = 90  # 3 months for compliance
-api_gateway_enable_xray_tracing = true
+api_gateway_log_retention_days       = 90 # 3 months for compliance
+api_gateway_enable_xray_tracing      = true
 
 # Performance optimization for production
 api_gateway_cache_cluster_enabled = true
-api_gateway_cache_cluster_size = "1.6"  # 1.6 GB cache for production
+api_gateway_cache_cluster_size    = "1.6" # 1.6 GB cache for production
 
 # Production throttling settings
 api_gateway_throttle_settings = {
@@ -158,9 +158,9 @@ api_gateway_throttle_settings = {
 
 # Stage variables for production
 api_gateway_stage_variables = {
-  environment = "prod"
+  environment  = "prod"
   lambda_alias = "PROD"
-  version = "1.0"
+  version      = "1.0"
 }
 
 # Production API structure
@@ -201,14 +201,14 @@ api_gateway_methods = {
     resource_key  = "health"
     http_method   = "GET"
     authorization = "NONE"
-    
+
     integration = {
       type = "MOCK"
       request_templates = {
         "application/json" = "{\"statusCode\": 200}"
       }
     }
-    
+
     responses = {
       "200" = {
         status_code = "200"
@@ -223,7 +223,7 @@ api_gateway_methods = {
       }
     }
   }
-  
+
   # Authenticated user endpoints would be configured here
   # get_users = {
   #   resource_key     = "users"
@@ -270,7 +270,7 @@ api_gateway_usage_plans = {
   basic_plan = {
     name        = "Basic Plan"
     description = "Basic production usage plan"
-    
+
     api_stages = [{
       stage = "v1"
       throttle = {
@@ -279,22 +279,22 @@ api_gateway_usage_plans = {
         burst_limit = 200
       }
     }]
-    
+
     quota_settings = {
       limit  = 10000
       period = "MONTH"
     }
-    
+
     throttle_settings = {
       rate_limit  = 100
       burst_limit = 200
     }
   }
-  
+
   premium_plan = {
     name        = "Premium Plan"
     description = "Premium production usage plan"
-    
+
     api_stages = [{
       stage = "v1"
       throttle = {
@@ -303,12 +303,12 @@ api_gateway_usage_plans = {
         burst_limit = 2000
       }
     }]
-    
+
     quota_settings = {
       limit  = 100000
       period = "MONTH"
     }
-    
+
     throttle_settings = {
       rate_limit  = 1000
       burst_limit = 2000
@@ -333,12 +333,12 @@ api_gateway_api_keys = {
 # Usage plan associations
 api_gateway_usage_plan_keys = {
   basic_association = {
-    api_key_name     = "client_basic"
-    usage_plan_name  = "basic_plan"
+    api_key_name    = "client_basic"
+    usage_plan_name = "basic_plan"
   }
   premium_association = {
-    api_key_name     = "client_premium"
-    usage_plan_name  = "premium_plan"
+    api_key_name    = "client_premium"
+    usage_plan_name = "premium_plan"
   }
 }
 

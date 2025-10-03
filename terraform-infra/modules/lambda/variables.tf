@@ -187,7 +187,7 @@ variable "image_config" {
   description = "Configuration for the Lambda function's container image"
   type = object({
     entry_point       = optional(list(string))
-    command          = optional(list(string))
+    command           = optional(list(string))
     working_directory = optional(string)
   })
   default = null
@@ -244,8 +244,8 @@ variable "logging_config" {
   type = object({
     log_format            = optional(string)
     application_log_level = optional(string)
-    system_log_level     = optional(string)
-    log_group            = optional(string)
+    system_log_level      = optional(string)
+    log_group             = optional(string)
   })
   default = null
 }
@@ -286,15 +286,15 @@ variable "function_url_config" {
   description = "Lambda Function URL configuration"
   type = object({
     authorization_type = string
-    invoke_mode       = optional(string, "BUFFERED")
-    qualifier         = optional(string)
+    invoke_mode        = optional(string, "BUFFERED")
+    qualifier          = optional(string)
     cors = optional(object({
       allow_credentials = optional(bool, false)
       allow_headers     = optional(list(string))
       allow_methods     = optional(list(string))
       allow_origins     = optional(list(string))
       expose_headers    = optional(list(string))
-      max_age          = optional(number)
+      max_age           = optional(number)
     }))
   })
   default = {
@@ -320,7 +320,7 @@ variable "provisioned_concurrency_config" {
   description = "Map of provisioned concurrency configs"
   type = map(object({
     provisioned_concurrent_executions = number
-    qualifier                        = string
+    qualifier                         = string
   }))
   default = {}
 }
@@ -332,47 +332,47 @@ variable "event_source_mappings" {
     event_source_arn                   = string
     starting_position                  = optional(string)
     starting_position_timestamp        = optional(string)
-    batch_size                        = optional(number)
+    batch_size                         = optional(number)
     maximum_batching_window_in_seconds = optional(number)
-    enabled                           = optional(bool, true)
-    parallelization_factor            = optional(number)
-    maximum_record_age_in_seconds     = optional(number)
-    bisect_batch_on_function_error    = optional(bool)
-    maximum_retry_attempts            = optional(number)
-    tumbling_window_in_seconds        = optional(number)
-    topics                           = optional(list(string))
-    queues                           = optional(list(string))
-    function_response_types          = optional(list(string))
-    
+    enabled                            = optional(bool, true)
+    parallelization_factor             = optional(number)
+    maximum_record_age_in_seconds      = optional(number)
+    bisect_batch_on_function_error     = optional(bool)
+    maximum_retry_attempts             = optional(number)
+    tumbling_window_in_seconds         = optional(number)
+    topics                             = optional(list(string))
+    queues                             = optional(list(string))
+    function_response_types            = optional(list(string))
+
     amazon_managed_kafka_event_source_config = optional(object({
       consumer_group_id = optional(string)
     }))
-    
+
     self_managed_kafka_event_source_config = optional(object({
       consumer_group_id = optional(string)
     }))
-    
+
     destination_config = optional(object({
       on_failure = optional(object({
         destination_arn = string
       }))
     }))
-    
+
     source_access_configuration = optional(list(object({
       type = string
       uri  = string
     })))
-    
+
     filter_criteria = optional(object({
       filters = list(object({
         pattern = optional(string)
       }))
     }))
-    
+
     scaling_config = optional(object({
       maximum_concurrency = optional(number)
     }))
-    
+
     document_db_event_source_config = optional(object({
       database_name   = string
       collection_name = optional(string)
@@ -386,12 +386,12 @@ variable "event_source_mappings" {
 variable "lambda_permissions" {
   description = "Map of Lambda permissions"
   type = map(object({
-    principal             = string
-    source_arn           = optional(string)
-    source_account       = optional(string)
-    qualifier            = optional(string)
-    event_source_token   = optional(string)
-    principal_org_id     = optional(string)
+    principal              = string
+    source_arn             = optional(string)
+    source_account         = optional(string)
+    qualifier              = optional(string)
+    event_source_token     = optional(string)
+    principal_org_id       = optional(string)
     function_url_auth_type = optional(string)
   }))
   default = {}
@@ -401,16 +401,16 @@ variable "lambda_permissions" {
 variable "lambda_layers" {
   description = "Map of Lambda layer configurations"
   type = map(object({
-    filename                = optional(string)
-    s3_bucket              = optional(string)
-    s3_key                 = optional(string)
-    s3_object_version      = optional(string)
-    source_code_hash       = optional(string)
-    compatible_runtimes    = optional(list(string))
+    filename                 = optional(string)
+    s3_bucket                = optional(string)
+    s3_key                   = optional(string)
+    s3_object_version        = optional(string)
+    source_code_hash         = optional(string)
+    compatible_runtimes      = optional(list(string))
     compatible_architectures = optional(list(string))
-    description            = optional(string)
-    license_info          = optional(string)
-    skip_destroy          = optional(bool, false)
+    description              = optional(string)
+    license_info             = optional(string)
+    skip_destroy             = optional(bool, false)
   }))
   default = {}
 }
@@ -451,27 +451,27 @@ variable "cloudwatch_alarms_config" {
   type = object({
     duration = optional(object({
       evaluation_periods = optional(number, 2)
-      period            = optional(number, 60)
-      statistic         = optional(string, "Average")
-      threshold         = optional(number, 10000)
+      period             = optional(number, 60)
+      statistic          = optional(string, "Average")
+      threshold          = optional(number, 10000)
     }), {})
     errors = optional(object({
       evaluation_periods = optional(number, 2)
-      period            = optional(number, 60)
-      statistic         = optional(string, "Sum")
-      threshold         = optional(number, 1)
+      period             = optional(number, 60)
+      statistic          = optional(string, "Sum")
+      threshold          = optional(number, 1)
     }), {})
     throttles = optional(object({
       evaluation_periods = optional(number, 2)
-      period            = optional(number, 60)
-      statistic         = optional(string, "Sum")
-      threshold         = optional(number, 1)
+      period             = optional(number, 60)
+      statistic          = optional(string, "Sum")
+      threshold          = optional(number, 1)
     }), {})
     concurrent_executions = optional(object({
       evaluation_periods = optional(number, 2)
-      period            = optional(number, 60)
-      statistic         = optional(string, "Maximum")
-      threshold         = optional(number, 100)
+      period             = optional(number, 60)
+      statistic          = optional(string, "Maximum")
+      threshold          = optional(number, 100)
     }), {})
   })
   default = {}

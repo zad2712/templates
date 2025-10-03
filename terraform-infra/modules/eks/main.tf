@@ -54,7 +54,7 @@ data "aws_iam_policy_document" "node_assume_role_policy" {
 
 resource "aws_iam_role" "cluster" {
   count = var.create_cluster ? 1 : 0
-  
+
   name               = "${var.cluster_name}-cluster-role"
   assume_role_policy = data.aws_iam_policy_document.cluster_assume_role_policy.json
   tags               = var.tags
@@ -62,7 +62,7 @@ resource "aws_iam_role" "cluster" {
 
 resource "aws_iam_role_policy_attachment" "cluster_policy" {
   count = var.create_cluster ? 1 : 0
-  
+
   policy_arn = "arn:${data.aws_partition.current.partition}:iam::aws:policy/AmazonEKSClusterPolicy"
   role       = aws_iam_role.cluster[0].name
 }
@@ -73,7 +73,7 @@ resource "aws_iam_role_policy_attachment" "cluster_policy" {
 
 resource "aws_eks_cluster" "main" {
   count = var.create_cluster ? 1 : 0
-  
+
   name     = var.cluster_name
   role_arn = aws_iam_role.cluster[0].arn
   version  = var.cluster_version
@@ -114,7 +114,7 @@ resource "aws_eks_cluster" "main" {
 
 resource "aws_cloudwatch_log_group" "cluster" {
   count = var.create_cluster && length(var.cluster_enabled_log_types) > 0 ? 1 : 0
-  
+
   name              = "/aws/eks/${var.cluster_name}/cluster"
   retention_in_days = var.cloudwatch_log_group_retention_in_days
   kms_key_id        = var.cloudwatch_log_group_kms_key_id
@@ -127,7 +127,7 @@ resource "aws_cloudwatch_log_group" "cluster" {
 
 resource "aws_iam_role" "node_group" {
   count = var.create_cluster && length(var.node_groups) > 0 ? 1 : 0
-  
+
   name               = "${var.cluster_name}-node-group-role"
   assume_role_policy = data.aws_iam_policy_document.node_assume_role_policy.json
   tags               = var.tags
@@ -135,21 +135,21 @@ resource "aws_iam_role" "node_group" {
 
 resource "aws_iam_role_policy_attachment" "node_group_worker_policy" {
   count = var.create_cluster && length(var.node_groups) > 0 ? 1 : 0
-  
+
   policy_arn = "arn:${data.aws_partition.current.partition}:iam::aws:policy/AmazonEKSWorkerNodePolicy"
   role       = aws_iam_role.node_group[0].name
 }
 
 resource "aws_iam_role_policy_attachment" "node_group_cni_policy" {
   count = var.create_cluster && length(var.node_groups) > 0 ? 1 : 0
-  
+
   policy_arn = "arn:${data.aws_partition.current.partition}:iam::aws:policy/AmazonEKS_CNI_Policy"
   role       = aws_iam_role.node_group[0].name
 }
 
 resource "aws_iam_role_policy_attachment" "node_group_registry_policy" {
   count = var.create_cluster && length(var.node_groups) > 0 ? 1 : 0
-  
+
   policy_arn = "arn:${data.aws_partition.current.partition}:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
   role       = aws_iam_role.node_group[0].name
 }
@@ -219,7 +219,7 @@ resource "aws_eks_node_group" "main" {
 
 resource "aws_iam_role" "fargate_profile" {
   count = var.create_cluster && length(var.fargate_profiles) > 0 ? 1 : 0
-  
+
   name = "${var.cluster_name}-fargate-profile-role"
 
   assume_role_policy = jsonencode({
@@ -238,7 +238,7 @@ resource "aws_iam_role" "fargate_profile" {
 
 resource "aws_iam_role_policy_attachment" "fargate_profile_policy" {
   count = var.create_cluster && length(var.fargate_profiles) > 0 ? 1 : 0
-  
+
   policy_arn = "arn:${data.aws_partition.current.partition}:iam::aws:policy/AmazonEKSFargatePodExecutionRolePolicy"
   role       = aws_iam_role.fargate_profile[0].name
 }
@@ -253,7 +253,7 @@ resource "aws_eks_fargate_profile" "main" {
   cluster_name           = aws_eks_cluster.main[0].name
   fargate_profile_name   = each.key
   pod_execution_role_arn = aws_iam_role.fargate_profile[0].arn
-  subnet_ids            = each.value.subnet_ids
+  subnet_ids             = each.value.subnet_ids
 
   dynamic "selector" {
     for_each = each.value.selectors

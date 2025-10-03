@@ -6,7 +6,7 @@ locals {
   # Environment-specific configurations
   env_config = {
     dev = {
-      nat_gateway_count = 1  # Single NAT for cost optimization in dev
+      nat_gateway_count = 1 # Single NAT for cost optimization in dev
       enable_flow_logs  = false
     }
     qa = {
@@ -14,11 +14,11 @@ locals {
       enable_flow_logs  = false
     }
     uat = {
-      nat_gateway_count = 2  # Multi-AZ for production-like testing
+      nat_gateway_count = 2 # Multi-AZ for production-like testing
       enable_flow_logs  = true
     }
     prod = {
-      nat_gateway_count = 2  # Multi-AZ for high availability
+      nat_gateway_count = 2 # Multi-AZ for high availability
       enable_flow_logs  = true
     }
   }
@@ -41,7 +41,7 @@ locals {
   flow_logs_config = local.current_env.enable_flow_logs ? {
     log_destination_type = "s3"
     log_destination      = "arn:aws:s3:::${var.project_name}-${var.environment}-vpc-flow-logs"
-    log_format          = "$${srcaddr} $${dstaddr} $${srcport} $${dstport} $${protocol} $${packets} $${bytes} $${windowstart} $${windowend} $${action}"
+    log_format           = "$${srcaddr} $${dstaddr} $${srcport} $${dstport} $${protocol} $${packets} $${bytes} $${windowstart} $${windowend} $${action}"
   } : {}
 }
 

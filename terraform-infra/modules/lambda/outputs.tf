@@ -175,8 +175,8 @@ output "cloudwatch_alarms" {
   description = "Map of CloudWatch alarms created"
   value = {
     duration              = try(aws_cloudwatch_metric_alarm.duration[0].arn, "")
-    errors               = try(aws_cloudwatch_metric_alarm.errors[0].arn, "")
-    throttles            = try(aws_cloudwatch_metric_alarm.throttles[0].arn, "")
+    errors                = try(aws_cloudwatch_metric_alarm.errors[0].arn, "")
+    throttles             = try(aws_cloudwatch_metric_alarm.throttles[0].arn, "")
     concurrent_executions = try(aws_cloudwatch_metric_alarm.concurrent_executions[0].arn, "")
   }
 }

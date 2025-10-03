@@ -11,8 +11,8 @@ resource "aws_dynamodb_table" "this" {
   stream_enabled   = var.stream_enabled
   stream_view_type = var.stream_enabled ? var.stream_view_type : null
 
-  table_class                     = var.table_class
-  deletion_protection_enabled     = var.deletion_protection_enabled
+  table_class                    = var.table_class
+  deletion_protection_enabled    = var.deletion_protection_enabled
   point_in_time_recovery_enabled = var.point_in_time_recovery_enabled
 
   # Attributes
@@ -29,12 +29,12 @@ resource "aws_dynamodb_table" "this" {
     for_each = var.global_secondary_indexes
     content {
       name               = global_secondary_index.value.name
-      hash_key          = global_secondary_index.value.hash_key
-      range_key         = lookup(global_secondary_index.value, "range_key", null)
-      projection_type   = global_secondary_index.value.projection_type
+      hash_key           = global_secondary_index.value.hash_key
+      range_key          = lookup(global_secondary_index.value, "range_key", null)
+      projection_type    = global_secondary_index.value.projection_type
       non_key_attributes = lookup(global_secondary_index.value, "non_key_attributes", null)
-      read_capacity     = var.billing_mode == "PROVISIONED" ? lookup(global_secondary_index.value, "read_capacity", null) : null
-      write_capacity    = var.billing_mode == "PROVISIONED" ? lookup(global_secondary_index.value, "write_capacity", null) : null
+      read_capacity      = var.billing_mode == "PROVISIONED" ? lookup(global_secondary_index.value, "read_capacity", null) : null
+      write_capacity     = var.billing_mode == "PROVISIONED" ? lookup(global_secondary_index.value, "write_capacity", null) : null
     }
   }
 
@@ -43,8 +43,8 @@ resource "aws_dynamodb_table" "this" {
     for_each = var.local_secondary_indexes
     content {
       name               = local_secondary_index.value.name
-      range_key         = local_secondary_index.value.range_key
-      projection_type   = local_secondary_index.value.projection_type
+      range_key          = local_secondary_index.value.range_key
+      projection_type    = local_secondary_index.value.projection_type
       non_key_attributes = lookup(local_secondary_index.value, "non_key_attributes", null)
     }
   }
@@ -71,10 +71,10 @@ resource "aws_dynamodb_table" "this" {
   dynamic "replica" {
     for_each = var.replica_regions
     content {
-      region_name                    = replica.value.region_name
-      kms_key_arn                   = lookup(replica.value, "kms_key_arn", null)
-      point_in_time_recovery        = lookup(replica.value, "point_in_time_recovery", null)
-      propagate_tags               = lookup(replica.value, "propagate_tags", null)
+      region_name            = replica.value.region_name
+      kms_key_arn            = lookup(replica.value, "kms_key_arn", null)
+      point_in_time_recovery = lookup(replica.value, "point_in_time_recovery", null)
+      propagate_tags         = lookup(replica.value, "propagate_tags", null)
     }
   }
 
@@ -82,15 +82,15 @@ resource "aws_dynamodb_table" "this" {
   dynamic "import_table" {
     for_each = var.import_table != null ? [var.import_table] : []
     content {
-      bucket_owner       = lookup(import_table.value, "bucket_owner", null)
+      bucket_owner = lookup(import_table.value, "bucket_owner", null)
       s3_bucket_source {
-        bucket             = import_table.value.s3_bucket_source.bucket
-        bucket_owner       = lookup(import_table.value.s3_bucket_source, "bucket_owner", null)
-        key_prefix         = lookup(import_table.value.s3_bucket_source, "key_prefix", null)
+        bucket       = import_table.value.s3_bucket_source.bucket
+        bucket_owner = lookup(import_table.value.s3_bucket_source, "bucket_owner", null)
+        key_prefix   = lookup(import_table.value.s3_bucket_source, "key_prefix", null)
       }
       input_compression_type = lookup(import_table.value, "input_compression_type", null)
-      input_format          = import_table.value.input_format
-      input_format_options = lookup(import_table.value, "input_format_options", null)
+      input_format           = import_table.value.input_format
+      input_format_options   = lookup(import_table.value, "input_format_options", null)
     }
   }
 
@@ -135,7 +135,7 @@ resource "aws_appautoscaling_policy" "read_policy" {
     predefined_metric_specification {
       predefined_metric_type = "DynamoDBReadCapacityUtilization"
     }
-    target_value = var.autoscaling_read.target_value
+    target_value       = var.autoscaling_read.target_value
     scale_in_cooldown  = var.autoscaling_read.scale_in_cooldown
     scale_out_cooldown = var.autoscaling_read.scale_out_cooldown
   }
@@ -167,7 +167,7 @@ resource "aws_appautoscaling_policy" "write_policy" {
     predefined_metric_specification {
       predefined_metric_type = "DynamoDBWriteCapacityUtilization"
     }
-    target_value = var.autoscaling_write.target_value
+    target_value       = var.autoscaling_write.target_value
     scale_in_cooldown  = var.autoscaling_write.scale_in_cooldown
     scale_out_cooldown = var.autoscaling_write.scale_out_cooldown
   }
@@ -199,7 +199,7 @@ resource "aws_appautoscaling_policy" "gsi_read_policy" {
     predefined_metric_specification {
       predefined_metric_type = "DynamoDBReadCapacityUtilization"
     }
-    target_value = each.value.read.target_value
+    target_value       = each.value.read.target_value
     scale_in_cooldown  = each.value.read.scale_in_cooldown
     scale_out_cooldown = each.value.read.scale_out_cooldown
   }
@@ -231,7 +231,7 @@ resource "aws_appautoscaling_policy" "gsi_write_policy" {
     predefined_metric_specification {
       predefined_metric_type = "DynamoDBWriteCapacityUtilization"
     }
-    target_value = each.value.write.target_value
+    target_value       = each.value.write.target_value
     scale_in_cooldown  = each.value.write.scale_in_cooldown
     scale_out_cooldown = each.value.write.scale_out_cooldown
   }

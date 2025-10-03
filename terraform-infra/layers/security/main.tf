@@ -4,7 +4,7 @@
 
 terraform {
   required_version = ">= 1.9.0"
-  
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -38,9 +38,9 @@ module "kms" {
 
   name        = "${var.project_name}-${var.environment}"
   description = "KMS keys for ${var.environment} environment"
-  
+
   keys = var.kms_keys
-  
+
   tags = local.common_tags
 }
 
@@ -53,13 +53,13 @@ module "iam" {
 
   project_name = var.project_name
   environment  = var.environment
-  
+
   # Application roles
   application_roles = var.application_roles
-  
+
   # Service roles (EC2, Lambda, ECS, etc.)
   service_roles = var.service_roles
-  
+
   tags = local.common_tags
 }
 
@@ -88,12 +88,12 @@ module "waf" {
 
   name        = "${var.project_name}-${var.environment}"
   description = "WAF for ${var.environment} environment"
-  
+
   scope = var.waf_scope # CLOUDFRONT or REGIONAL
-  
+
   # WAF rules configuration
   rules = var.waf_rules
-  
+
   tags = local.common_tags
 }
 
@@ -107,7 +107,7 @@ module "secrets" {
 
   secrets    = var.secrets
   kms_key_id = module.kms.keys["general"].id
-  
+
   tags = local.common_tags
 }
 

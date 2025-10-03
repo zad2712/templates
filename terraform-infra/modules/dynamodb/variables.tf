@@ -155,9 +155,9 @@ variable "replica_regions" {
   description = "Region names for creating replica tables"
   type = list(object({
     region_name            = string
-    kms_key_arn           = optional(string)
+    kms_key_arn            = optional(string)
     point_in_time_recovery = optional(bool)
-    propagate_tags        = optional(bool)
+    propagate_tags         = optional(bool)
   }))
   default = []
 }
@@ -173,8 +173,8 @@ variable "import_table" {
       key_prefix   = optional(string)
     })
     input_compression_type = optional(string)
-    input_format          = string
-    input_format_options  = optional(map(string))
+    input_format           = string
+    input_format_options   = optional(map(string))
   })
   default = null
 }
@@ -191,15 +191,15 @@ variable "autoscaling_read" {
   type = object({
     max_capacity       = number
     min_capacity       = number
-    target_value      = number
-    scale_in_cooldown = number
+    target_value       = number
+    scale_in_cooldown  = number
     scale_out_cooldown = number
   })
   default = {
     max_capacity       = 100
     min_capacity       = 5
-    target_value      = 70
-    scale_in_cooldown = 60
+    target_value       = 70
+    scale_in_cooldown  = 60
     scale_out_cooldown = 60
   }
 }
@@ -209,15 +209,15 @@ variable "autoscaling_write" {
   type = object({
     max_capacity       = number
     min_capacity       = number
-    target_value      = number
-    scale_in_cooldown = number
+    target_value       = number
+    scale_in_cooldown  = number
     scale_out_cooldown = number
   })
   default = {
     max_capacity       = 100
     min_capacity       = 5
-    target_value      = 70
-    scale_in_cooldown = 60
+    target_value       = 70
+    scale_in_cooldown  = 60
     scale_out_cooldown = 60
   }
 }
@@ -228,15 +228,15 @@ variable "gsi_autoscaling" {
     read = object({
       max_capacity       = number
       min_capacity       = number
-      target_value      = number
-      scale_in_cooldown = number
+      target_value       = number
+      scale_in_cooldown  = number
       scale_out_cooldown = number
     })
     write = object({
       max_capacity       = number
       min_capacity       = number
-      target_value      = number
-      scale_in_cooldown = number
+      target_value       = number
+      scale_in_cooldown  = number
       scale_out_cooldown = number
     })
   }))

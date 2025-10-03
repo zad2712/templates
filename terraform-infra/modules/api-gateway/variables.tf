@@ -19,7 +19,7 @@ variable "api_key_source" {
   description = "Source of the API key for requests"
   type        = string
   default     = "HEADER"
-  
+
   validation {
     condition     = contains(["HEADER", "AUTHORIZER"], var.api_key_source)
     error_message = "API key source must be either HEADER or AUTHORIZER."
@@ -48,7 +48,7 @@ variable "endpoint_types" {
   description = "List of endpoint types"
   type        = list(string)
   default     = ["EDGE"]
-  
+
   validation {
     condition = alltrue([
       for type in var.endpoint_types : contains(["EDGE", "REGIONAL", "PRIVATE"], type)
@@ -86,7 +86,7 @@ variable "log_retention_days" {
   description = "Number of days to retain CloudWatch logs"
   type        = number
   default     = 14
-  
+
   validation {
     condition = contains([
       1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653
@@ -113,7 +113,7 @@ variable "cache_cluster_size" {
   description = "Size of the cache cluster for the stage"
   type        = string
   default     = "0.5"
-  
+
   validation {
     condition = contains([
       "0.5", "1.6", "6.1", "13.5", "28.4", "58.2", "118", "237"
@@ -154,32 +154,32 @@ variable "api_methods" {
   description = "Map of API Gateway methods"
   type = map(object({
     resource_key         = string
-    http_method         = string
-    authorization       = string
-    authorizer_id       = optional(string)
-    api_key_required    = optional(bool, false)
+    http_method          = string
+    authorization        = string
+    authorizer_id        = optional(string)
+    api_key_required     = optional(bool, false)
     request_validator_id = optional(string)
-    request_parameters  = optional(map(bool), {})
-    request_models      = optional(map(string), {})
-    
+    request_parameters   = optional(map(bool), {})
+    request_models       = optional(map(string), {})
+
     integration = object({
       type                    = string
       integration_http_method = optional(string)
-      uri                    = optional(string)
-      connection_type        = optional(string, "INTERNET")
-      connection_id          = optional(string)
-      credentials            = optional(string)
-      request_templates      = optional(map(string), {})
-      request_parameters     = optional(map(string), {})
-      passthrough_behavior   = optional(string, "WHEN_NO_MATCH")
-      cache_key_parameters   = optional(list(string), [])
-      cache_namespace        = optional(string)
-      timeout_milliseconds   = optional(number, 29000)
+      uri                     = optional(string)
+      connection_type         = optional(string, "INTERNET")
+      connection_id           = optional(string)
+      credentials             = optional(string)
+      request_templates       = optional(map(string), {})
+      request_parameters      = optional(map(string), {})
+      passthrough_behavior    = optional(string, "WHEN_NO_MATCH")
+      cache_key_parameters    = optional(list(string), [])
+      cache_namespace         = optional(string)
+      timeout_milliseconds    = optional(number, 29000)
       tls_config = optional(object({
         insecure_skip_verification = bool
       }))
     })
-    
+
     responses = map(object({
       status_code         = string
       response_models     = optional(map(string), {})
@@ -222,13 +222,13 @@ variable "api_authorizers" {
   description = "Map of API Gateway authorizers"
   type = map(object({
     name                             = string
-    type                            = string
-    authorizer_uri                  = optional(string)
-    authorizer_credentials          = optional(string)
+    type                             = string
+    authorizer_uri                   = optional(string)
+    authorizer_credentials           = optional(string)
     authorizer_result_ttl_in_seconds = optional(number, 300)
-    identity_source                 = optional(string)
-    identity_validation_expression  = optional(string)
-    provider_arns                   = optional(list(string), [])
+    identity_source                  = optional(string)
+    identity_validation_expression   = optional(string)
+    provider_arns                    = optional(list(string), [])
   }))
   default = {}
 }
@@ -239,7 +239,7 @@ variable "usage_plans" {
   type = map(object({
     name        = string
     description = optional(string)
-    
+
     api_stages = list(object({
       stage = string
       throttle = optional(object({
@@ -248,13 +248,13 @@ variable "usage_plans" {
         burst_limit = number
       }))
     }))
-    
+
     quota_settings = optional(object({
       limit  = number
       offset = optional(number, 0)
       period = string
     }))
-    
+
     throttle_settings = optional(object({
       rate_limit  = number
       burst_limit = number
@@ -279,8 +279,8 @@ variable "api_keys" {
 variable "usage_plan_keys" {
   description = "Map of usage plan key associations"
   type = map(object({
-    api_key_name     = string
-    usage_plan_name  = string
+    api_key_name    = string
+    usage_plan_name = string
   }))
   default = {}
 }
@@ -302,7 +302,7 @@ variable "domain_security_policy" {
   description = "Security policy for the domain name"
   type        = string
   default     = "TLS_1_2"
-  
+
   validation {
     condition = contains([
       "TLS_1_0", "TLS_1_2"
@@ -315,7 +315,7 @@ variable "domain_endpoint_types" {
   description = "List of endpoint types for the domain name"
   type        = list(string)
   default     = ["EDGE"]
-  
+
   validation {
     condition = alltrue([
       for type in var.domain_endpoint_types : contains(["EDGE", "REGIONAL"], type)
