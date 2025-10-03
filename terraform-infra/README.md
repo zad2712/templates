@@ -1,19 +1,8 @@
 # Terraform Infrastructure as Code - AWS Multi-Layer Architecture
 
-This repository contains a comprehensive Terraform infrastructure setup following AWS best practices, designed for multi-environment deployments across different layers.
-
-## 🏗️ Architecture Overview
-
-The infrastructure is organized into **4 distinct layers**, each with **4 environments** (dev, qa, uat, prod):
-
-```
-# Terraform Infrastructure
-
-## 🚀 Overview
-
 This repository provides a comprehensive, enterprise-grade **Multi-Layer Terraform Infrastructure** designed for AWS cloud deployments. The architecture follows Infrastructure as Code (IaC) best practices with a modular, scalable, and maintainable approach.
 
-### 🎯 **Key Features**
+## 🎯 **Key Features**
 
 - **🏗️ Layered Architecture**: 4-tier structure (Networking, Security, Data, Compute)
 - **🌍 Multi-Environment**: Support for dev, qa, uat, and production environments
