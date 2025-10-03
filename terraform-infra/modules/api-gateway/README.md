@@ -673,8 +673,8 @@ api_methods = {
 
 ## Requirements
 
-- **Terraform**: >= 1.6.0
-- **AWS Provider**: ~> 5.70
+- **Terraform**: >= 1.9.0
+- **AWS Provider**: ~> 5.80
 - **IAM Permissions**: API Gateway, CloudWatch, IAM role management
 
 ---

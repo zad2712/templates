@@ -90,7 +90,7 @@ variable "enable_eks" {
 variable "eks_cluster_version" {
   description = "Kubernetes version to use for the EKS cluster"
   type        = string
-  default     = "1.30"
+  default     = "1.31"
 }
 
 variable "eks_endpoint_private_access" {
@@ -183,10 +183,10 @@ variable "eks_addons" {
       addon_version = "v1.11.1-eksbuild.4"
     }
     kube-proxy = {
-      addon_version = "v1.30.0-eksbuild.2"
+      addon_version = "v1.31.0-eksbuild.2"
     }
     aws-ebs-csi-driver = {
-      addon_version = "v1.30.0-eksbuild.1"
+      addon_version = "v1.31.0-eksbuild.1"
     }
   }
 }

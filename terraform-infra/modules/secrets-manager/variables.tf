@@ -1,4 +1,4 @@
-﻿# Secrets Manager Module Variables
+# Secrets Manager Module Variables
 variable "name" {
   description = "Name of the secret"
   type        = string

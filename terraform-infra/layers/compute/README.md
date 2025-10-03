@@ -242,7 +242,7 @@ module "api_gateway" {
 #### **Production EKS Configuration**
 ```hcl
 # Cluster settings
-eks_cluster_version = "1.30"
+eks_cluster_version = "1.31"
 eks_endpoint_private_access = true
 eks_endpoint_public_access = false  # Private only
 
@@ -314,7 +314,7 @@ eks_fargate_profiles = {
 #### **Development EKS Configuration**
 ```hcl
 # Cost-optimized for development
-eks_cluster_version = "1.30"
+eks_cluster_version = "1.31"
 eks_endpoint_private_access = true
 eks_endpoint_public_access = true  # Accessible for development
 

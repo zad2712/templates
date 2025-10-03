@@ -743,8 +743,8 @@ aws rds restore-db-instance-from-db-snapshot \
 
 ## Requirements
 
-- **Terraform**: >= 1.6.0
-- **AWS Provider**: ~> 5.70
+- **Terraform**: >= 1.9.0
+- **AWS Provider**: ~> 5.80
 - **Minimum Permissions**: RDS management, VPC access, KMS (if using encryption)
 
 ## Related Documentation

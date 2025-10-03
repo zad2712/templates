@@ -1,4 +1,4 @@
-﻿# ElastiCache Module Variables
+# ElastiCache Module Variables
 variable "cluster_id" {
   description = "Group identifier for the ElastiCache cluster"
   type        = string

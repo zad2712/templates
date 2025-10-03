@@ -17,7 +17,7 @@ This repository provides a comprehensive, enterprise-grade **Multi-Layer Terrafo
 
 - **🏗️ Layered Architecture**: 4-tier structure (Networking, Security, Data, Compute)
 - **🌍 Multi-Environment**: Support for dev, qa, uat, and production environments
-- **⚡ Latest Technology Stack**: Terraform >= 1.6.0, AWS Provider ~> 5.70
+- **⚡ Latest Technology Stack**: Terraform >= 1.9.0, AWS Provider ~> 5.80
 - **🐳 Container Orchestration**: Full EKS implementation with marketplace add-ons
 - **💰 Cost Optimization**: SPOT instances, right-sizing, and resource optimization
 - **🔒 Security First**: IAM least privilege, encryption at rest/in transit
@@ -68,9 +68,9 @@ graph TB
 
 | Component | Version | Purpose |
 |-----------|---------|---------|
-| **Terraform** | >= 1.6.0 | Infrastructure as Code |
-| **AWS Provider** | ~> 5.70 | AWS Resource Management |
-| **Kubernetes** | 1.30 | Container Orchestration |
+| **Terraform** | >= 1.9.0 | Infrastructure as Code |
+| **AWS Provider** | ~> 5.80 | AWS Resource Management |
+| **Kubernetes** | 1.31 | Container Orchestration |
 | **EKS Add-ons** | Latest | Marketplace Components |
 
 ## 🗂️ Repository Structure
@@ -120,9 +120,9 @@ terraform-infra/
 - **💰 Cost Optimization**: SPOT instances, right-sizing recommendations
 
 ### 🔧 **Technical Improvements**
-- Terraform upgraded from 1.13.0 to **>= 1.6.0** (latest stable LTS)
-- AWS Provider updated to **~> 5.70** (October 2024)
-- EKS cluster version updated to **1.30** with latest add-ons
+- Terraform upgraded from 1.13.0 to **>= 1.9.0** (latest stable LTS)
+- AWS Provider updated to **~> 5.80** (October 2025)
+- EKS cluster version updated to **1.31** with latest add-ons
 - Enhanced security configurations and best practices
 - Improved monitoring and observability features
 
@@ -130,7 +130,7 @@ terraform-infra/
 
 ### **Prerequisites**
 - AWS CLI configured with appropriate permissions
-- Terraform >= 1.6.0 installed
+- Terraform >= 1.9.0 installed
 - PowerShell (for Windows users) or Bash (for Linux/Mac users)
 
 ### **1. Clone Repository**
@@ -251,7 +251,7 @@ Each module includes detailed documentation:
 ```hcl
 # Enable EKS with marketplace add-ons
 enable_eks = true
-eks_cluster_version = "1.30"
+eks_cluster_version = "1.31"
 
 # Cost-optimized node groups
 eks_node_groups = {
@@ -436,7 +436,7 @@ main              # Production deployments
 ### Prerequisites
 
 1. **AWS CLI** - [Installation Guide](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
-2. **Terraform** >= 1.5.0 - [Installation Guide](https://learn.hashicorp.com/tutorials/terraform/install-cli)
+2. **Terraform** >= 1.9.0 - [Installation Guide](https://learn.hashicorp.com/tutorials/terraform/install-cli)
 3. **AWS Credentials** configured (`aws configure`)
 
 ### Initial Setup

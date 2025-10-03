@@ -1,4 +1,4 @@
-﻿# Lambda Module Variables
+# Lambda Module Variables
 
 # Basic Configuration
 variable "create_function" {

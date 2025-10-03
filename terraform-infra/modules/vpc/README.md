@@ -445,8 +445,8 @@ aws ec2 describe-subnets --filters "Name=vpc-id,Values=vpc-xxx"
 
 ## Requirements
 
-- **Terraform**: >= 1.6.0
-- **AWS Provider**: ~> 5.70
+- **Terraform**: >= 1.9.0
+- **AWS Provider**: ~> 5.80
 - **Minimum Permissions**: VPC creation, subnet management, route table management
 
 ## Related Documentation

@@ -10,7 +10,7 @@ This Terraform module creates a production-ready **Amazon Elastic Kubernetes Ser
 - **Managed Control Plane**: AWS-managed Kubernetes API server with automatic updates
 - **Multi-AZ Worker Nodes**: Highly available node groups across availability zones
 - **Fargate Support**: Serverless container execution for specific workloads
-- **Latest Kubernetes**: Version 1.30 with latest EKS add-ons
+- **Latest Kubernetes**: Version 1.31 with latest EKS add-ons
 - **Cost Optimization**: SPOT instances, right-sizing, and efficient resource allocation
 
 ### 🔒 **Security & Compliance**
@@ -98,7 +98,7 @@ module "eks" {
   # Basic configuration
   create_cluster  = true
   cluster_name    = "my-eks-cluster"
-  cluster_version = "1.30"
+  cluster_version = "1.31"
   
   # Network configuration
   vpc_id     = module.vpc.vpc_id
@@ -137,7 +137,7 @@ module "production_eks" {
   # Cluster configuration
   create_cluster  = true
   cluster_name    = "prod-eks-cluster"
-  cluster_version = "1.30"
+  cluster_version = "1.31"
   
   # Network and security
   vpc_id                                 = module.vpc.vpc_id
@@ -258,11 +258,11 @@ module "production_eks" {
       resolve_conflicts = "OVERWRITE"
     }
     kube-proxy = {
-      addon_version = "v1.30.0-eksbuild.2"
+      addon_version = "v1.31.0-eksbuild.2"
       resolve_conflicts = "OVERWRITE"
     }
     aws-ebs-csi-driver = {
-      addon_version = "v1.30.0-eksbuild.1"
+      addon_version = "v1.31.0-eksbuild.1"
       resolve_conflicts = "OVERWRITE"
     }
   }
@@ -300,7 +300,7 @@ module "dev_eks" {
   # Minimal configuration for development
   create_cluster  = true
   cluster_name    = "dev-eks-cluster"
-  cluster_version = "1.30"
+  cluster_version = "1.31"
   
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
@@ -337,7 +337,7 @@ module "dev_eks" {
       addon_version = "v1.11.1-eksbuild.4"
     }
     kube-proxy = {
-      addon_version = "v1.30.0-eksbuild.2"
+      addon_version = "v1.31.0-eksbuild.2"
     }
   }
   
@@ -395,7 +395,7 @@ module "dev_eks" {
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `create_cluster` | `bool` | `false` | Whether to create the EKS cluster |
-| `cluster_version` | `string` | `"1.30"` | Kubernetes version |
+| `cluster_version` | `string` | `"1.31"` | Kubernetes version |
 | `cluster_endpoint_private_access` | `bool` | `true` | Enable private API access |
 | `cluster_endpoint_public_access` | `bool` | `true` | Enable public API access |
 | `cluster_enabled_log_types` | `list(string)` | `[]` | CloudWatch log types to enable |
@@ -688,12 +688,12 @@ aws iam get-role --role-name AmazonEKSLoadBalancerControllerRole
 
 ## Requirements
 
-- **Terraform**: >= 1.6.0
-- **AWS Provider**: ~> 5.70
+- **Terraform**: >= 1.9.0
+- **AWS Provider**: ~> 5.80
 - **Kubernetes Provider**: ~> 2.24
 - **Helm Provider**: ~> 2.10
 - **AWS CLI**: Latest version for post-deployment configuration
-- **kubectl**: Compatible with Kubernetes 1.30
+- **kubectl**: Compatible with Kubernetes 1.31
 
 ## Related Documentation
 

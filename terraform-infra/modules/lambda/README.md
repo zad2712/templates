@@ -945,8 +945,8 @@ aws cloudwatch get-metric-statistics \
 
 ## Requirements
 
-- **Terraform**: >= 1.6.0
-- **AWS Provider**: ~> 5.70
+- **Terraform**: >= 1.9.0
+- **AWS Provider**: ~> 5.80
 - **Minimum Permissions**: Lambda management, IAM role creation, CloudWatch access
 
 ## Related Documentation

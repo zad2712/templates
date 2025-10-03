@@ -20,7 +20,7 @@ lambda_functions = {}
 
 # EKS Configuration - Production Environment
 enable_eks = true
-eks_cluster_version = "1.30"
+eks_cluster_version = "1.31"
 
 # Cluster endpoint configuration (Production - high security)
 eks_endpoint_private_access = true
@@ -106,10 +106,10 @@ eks_addons = {
     addon_version = "v1.11.1-eksbuild.4"
   }
   kube-proxy = {
-    addon_version = "v1.30.0-eksbuild.2"
+    addon_version = "v1.31.0-eksbuild.2"
   }
   aws-ebs-csi-driver = {
-    addon_version = "v1.30.0-eksbuild.1"
+    addon_version = "v1.31.0-eksbuild.1"
   }
 }
 

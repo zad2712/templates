@@ -1,4 +1,4 @@
-﻿# ECS Module Variables
+# ECS Module Variables
 
 # Cluster Configuration
 variable "create_cluster" {
