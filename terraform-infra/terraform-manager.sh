@@ -4,6 +4,23 @@
 # Usage: ./terraform-manager.sh -a <action> -e <env> -l <layer> [-p <profile>] [-r <region>]
 # Example: ./terraform-manager.sh -a plan -e dev -l networking
 
+# # Make executable (first time only)
+# chmod +x terraform-manager.sh
+
+# # Bootstrap AWS resources
+# ./terraform-manager.sh -a bootstrap -e dev
+
+# # Deploy networking layer
+# ./terraform-manager.sh -a init -l networking -e dev
+# ./terraform-manager.sh -a plan -l networking -e dev
+# ./terraform-manager.sh -a apply -l networking -e dev
+
+# # Deploy all layers for production
+# ./terraform-manager.sh -a deploy-all -e prod -p production -r us-west-2
+
+# # Show help
+# ./terraform-manager.sh --help
+
 # Script configuration
 set -euo pipefail  # Exit on error, undefined vars, and pipe failures
 
