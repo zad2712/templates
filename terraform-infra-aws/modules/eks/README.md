@@ -1,714 +1,925 @@
-# EKS Terraform Module
+# EKS Module
+
+[![Terraform](https://img.shields.io/badge/terraform-%235835CC.svg?style=for-the-badge&logo=terraform&logoColor=white)](https://www.terraform.io/)
+[![AWS](https://img.shields.io/badge/AWS-%23FF9900.svg?style=for-the-badge&logo=amazon-aws&logoColor=white)](https://aws.amazon.com/)
+[![Kubernetes](https://img.shields.io/badge/kubernetes-%23326ce5.svg?style=for-the-badge&logo=kubernetes&logoColor=white)](https://kubernetes.io/)
 
 ## Overview
 
-This Terraform module creates a production-ready **Amazon Elastic Kubernetes Service (EKS)** cluster with cost optimization features, enterprise security, and the latest marketplace add-ons. The module follows AWS best practices and provides a complete Kubernetes platform with monitoring, autoscaling, and security features built-in.
+This Terraform module creates and manages Amazon EKS (Elastic Kubernetes Service) clusters with comprehensive configuration options following AWS best practices and Kubernetes security guidelines. The module supports multiple deployment patterns, managed node groups, Fargate profiles, add-ons, and advanced security configurations.
 
 ## Features
 
-### 🚀 **Core EKS Features**
-- **Managed Control Plane**: AWS-managed Kubernetes API server with automatic updates
-- **Multi-AZ Worker Nodes**: Highly available node groups across availability zones
-- **Fargate Support**: Serverless container execution for specific workloads
-- **Latest Kubernetes**: Version 1.31 with latest EKS add-ons
-- **Cost Optimization**: SPOT instances, right-sizing, and efficient resource allocation
-
-### 🔒 **Security & Compliance**
-- **IAM Integration**: Fine-grained access control with RBAC
-- **Network Security**: Private API endpoints, security groups, and network policies
-- **Encryption**: Secrets encryption at rest with KMS
-- **Pod Security**: Security contexts and admission controllers
-- **Audit Logging**: Comprehensive cluster activity logging
-
-### 📦 **Marketplace Add-ons**
-- **AWS Load Balancer Controller** v1.8.1 - ALB/NLB Ingress support
-- **Cluster Autoscaler** v9.37.0 - Automatic node scaling
-- **Metrics Server** v3.12.1 - Resource utilization metrics for HPA
-- **AWS Node Termination Handler** - Graceful SPOT instance handling
-- **External DNS** - Automatic DNS record management
-
-### 📊 **Monitoring & Observability**
-- **CloudWatch Container Insights**: Detailed cluster and pod metrics
-- **Prometheus Ready**: Metrics collection for custom monitoring
-- **Audit Logging**: API server activity tracking
-- **VPC Flow Logs Integration**: Network traffic analysis
+- **EKS Cluster Management**: Complete cluster lifecycle with version management and upgrades
+- **Multiple Compute Options**: Managed node groups, Fargate profiles, and self-managed nodes
+- **Security**: Private clusters, RBAC integration, pod security policies, and encryption
+- **Networking**: VPC integration, custom CNI, service mesh ready, and load balancer integration
+- **Add-ons**: AWS managed add-ons (VPC CNI, CoreDNS, kube-proxy, EBS CSI, etc.)
+- **Monitoring**: CloudWatch Container Insights, control plane logging, and metrics
+- **Autoscaling**: Cluster Autoscaler, Horizontal Pod Autoscaler, and Vertical Pod Autoscaler
+- **IRSA Support**: IAM Roles for Service Accounts with OIDC integration
+- **Multi-AZ Deployment**: High availability across multiple availability zones
+- **Cost Optimization**: Spot instances, Fargate, and right-sizing recommendations
 
 ## Architecture
 
-### 🏗️ **Cluster Architecture**
-
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                     EKS Control Plane                          │
-│                   (AWS Managed)                                │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐ │
-│  │  Worker Nodes   │  │  Worker Nodes   │  │  Worker Nodes   │ │
-│  │    (AZ-1)       │  │    (AZ-2)       │  │    (AZ-3)       │ │
-│  │                 │  │                 │  │                 │ │
-│  │ ┌─────────────┐ │  │ ┌─────────────┐ │  │ ┌─────────────┐ │ │
-│  │ │   Pod       │ │  │ │   Pod       │ │  │ │   Pod       │ │ │
-│  │ │             │ │  │ │             │ │  │ │             │ │ │
-│  │ └─────────────┘ │  │ └─────────────┘ │  │ └─────────────┘ │ │
-│  │ ┌─────────────┐ │  │ ┌─────────────┐ │  │ ┌─────────────┐ │ │
-│  │ │   Pod       │ │  │ │   Pod       │ │  │ │   Pod       │ │ │
-│  │ └─────────────┘ │  │ └─────────────┘ │  │ └─────────────┘ │ │
-│  └─────────────────┘  └─────────────────┘  └─────────────────┘ │
-│                                                                 │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │                Fargate Profiles                         │   │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐     │   │
-│  │  │ Serverless  │  │ Serverless  │  │ Serverless  │     │   │
-│  │  │    Pod      │  │    Pod      │  │    Pod      │     │   │
-│  │  └─────────────┘  └─────────────┘  └─────────────┘     │   │
-│  └─────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### 📋 **Add-ons Architecture**
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    EKS Cluster                                  │
-├─────────────────────────────────────────────────────────────────┤
-│  kube-system namespace                                          │
-│  ├─ AWS Load Balancer Controller (ALB/NLB Ingress)            │
-│  ├─ Cluster Autoscaler (Node Scaling)                         │
-│  ├─ Metrics Server (HPA Support)                              │
-│  ├─ CoreDNS (Service Discovery)                               │
-│  ├─ AWS VPC CNI (Networking)                                  │
-│  └─ kube-proxy (Load Balancing)                               │
-│                                                                 │
-│  monitoring namespace (optional)                                │
-│  ├─ Prometheus (Metrics Collection)                            │
-│  ├─ Grafana (Visualization)                                    │
-│  └─ AlertManager (Alerting)                                    │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                            EKS Cluster Architecture                         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────────────┐  │
+│  │   Control Plane │    │   Data Plane    │    │      Add-ons           │  │
+│  │   (AWS Managed) │    │                 │    │                        │  │
+│  │                 │    │  ┌───────────┐  │    │  • VPC CNI             │  │
+│  │  • API Server   │    │  │Node Groups│  │    │  • CoreDNS             │  │
+│  │  • etcd         │◄───┤  │           │  │    │  • kube-proxy          │  │
+│  │  • Scheduler    │    │  │  ┌─────┐  │  │    │  • EBS CSI Driver      │  │
+│  │  • Controller  │    │  │  │Pods │  │  │    │  • EFS CSI Driver      │  │
+│  │    Manager      │    │  │  └─────┘  │  │    │  • AWS Load Balancer   │  │
+│  └─────────────────┘    │  └───────────┘  │    │    Controller          │  │
+│                         │                 │    │  • Cluster Autoscaler  │  │
+│                         │  ┌───────────┐  │    │  • Metrics Server      │  │
+│                         │  │ Fargate   │  │    └─────────────────────────┘  │
+│                         │  │ Profiles  │  │                                │
+│                         │  │           │  │                                │
+│                         │  │  ┌─────┐  │  │                                │
+│                         │  │  │Pods │  │  │                                │
+│                         │  │  └─────┘  │  │                                │
+│                         │  └───────────┘  │                                │
+│                         └─────────────────┘                                │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                             Networking & Security                           │
+│  • Private Subnets          • Security Groups        • RBAC Integration    │
+│  • VPC Integration          • Network Policies       • Pod Security        │
+│  • Service Discovery        • IAM Integration        • Encryption at Rest  │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Usage Examples
+## Usage
 
 ### Basic EKS Cluster
 
 ```hcl
-module "eks" {
-  source = "../../modules/eks"
+module "eks_basic" {
+  source = "./modules/eks"
 
-  # Basic configuration
-  create_cluster  = true
-  cluster_name    = "my-eks-cluster"
-  cluster_version = "1.31"
-  
-  # Network configuration
-  vpc_id     = module.vpc.vpc_id
-  subnet_ids = module.vpc.private_subnets
-  
-  # Basic node group
-  node_groups = {
-    general = {
-      instance_types = ["t3.medium"]
-      capacity_type  = "ON_DEMAND"
-      desired_size   = 2
-      max_size      = 5
-      min_size      = 1
-      disk_size     = 50
+  name_prefix = "my-app"
+
+  eks_clusters = {
+    "main" = {
+      version    = "1.28"
+      subnet_ids = ["subnet-12345678", "subnet-87654321", "subnet-11111111"]
+      
+      endpoint_private_access = true
+      endpoint_public_access  = false
+      
+      enabled_cluster_log_types = ["api", "audit", "authenticator"]
+      
+      node_groups = {
+        "general" = {
+          subnet_ids     = ["subnet-12345678", "subnet-87654321"]
+          instance_types = ["t3.medium"]
+          
+          scaling_config = {
+            desired_size = 2
+            max_size     = 5
+            min_size     = 1
+          }
+        }
+      }
     }
   }
-  
-  # Essential add-ons
-  enable_aws_load_balancer_controller = true
-  enable_cluster_autoscaler          = true
-  enable_metrics_server              = true
-  
+
   tags = {
-    Environment = "development"
-    Project     = "my-app"
+    Environment = "production"
+    Project     = "my-application"
   }
 }
 ```
 
-### Production EKS Cluster with Cost Optimization
+### Advanced EKS Cluster with Multiple Node Groups
 
 ```hcl
-module "production_eks" {
-  source = "../../modules/eks"
+module "eks_advanced" {
+  source = "./modules/eks"
 
-  # Cluster configuration
-  create_cluster  = true
-  cluster_name    = "prod-eks-cluster"
-  cluster_version = "1.31"
-  
-  # Network and security
-  vpc_id                                 = module.vpc.vpc_id
-  subnet_ids                            = module.vpc.private_subnets
-  cluster_endpoint_private_access       = true
-  cluster_endpoint_public_access        = false  # Private cluster
-  cluster_endpoint_public_access_cidrs  = []
-  
-  # Comprehensive logging
-  cluster_enabled_log_types = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
-  
-  # Multiple node groups for different workloads
-  node_groups = {
-    # General purpose nodes with SPOT instances
-    general = {
-      instance_types = ["m5.large", "m5.xlarge", "m5a.large", "m5a.xlarge"]
-      capacity_type  = "SPOT"  # 90% cost savings
-      desired_size   = 3
-      max_size      = 20
-      min_size      = 3
-      disk_size     = 100
+  name_prefix = "enterprise"
+
+  eks_clusters = {
+    "production" = {
+      version    = "1.28"
+      subnet_ids = ["subnet-private-1", "subnet-private-2", "subnet-private-3"]
       
-      labels = {
-        role = "general"
-        instance-type = "spot"
+      # Private cluster configuration
+      endpoint_private_access = true
+      endpoint_public_access  = false
+      security_group_ids      = [module.security_groups.eks_cluster_sg_id]
+      
+      # Encryption configuration
+      encryption_config = {
+        provider = {
+          key_arn = module.kms.key_arns["eks"]
+        }
+        resources = ["secrets"]
       }
       
-      taints = []
-    }
-    
-    # On-demand nodes for critical workloads
-    critical = {
-      instance_types = ["m5.large"]
-      capacity_type  = "ON_DEMAND"
-      desired_size   = 2
-      max_size      = 5
-      min_size      = 1
-      disk_size     = 100
+      # Comprehensive logging
+      enabled_cluster_log_types = [
+        "api", "audit", "authenticator", 
+        "controllerManager", "scheduler"
+      ]
       
-      labels = {
-        role = "critical"
-        instance-type = "on-demand"
+      # Access configuration
+      access_config = {
+        authentication_mode                         = "API_AND_CONFIG_MAP"
+        bootstrap_cluster_creator_admin_permissions = true
       }
       
-      taints = [
-        {
-          key    = "critical-workload"
-          value  = "true"
-          effect = "NO_SCHEDULE"
+      # Multiple node groups for different workloads
+      node_groups = {
+        # General purpose nodes
+        "general" = {
+          subnet_ids     = ["subnet-private-1", "subnet-private-2"]
+          capacity_type  = "ON_DEMAND"
+          ami_type      = "AL2_x86_64"
+          instance_types = ["m5.large", "m5.xlarge"]
+          disk_size     = 50
+          
+          scaling_config = {
+            desired_size = 3
+            max_size     = 10
+            min_size     = 2
+          }
+          
+          update_config = {
+            max_unavailable_percentage = 25
+          }
+          
+          labels = {
+            role = "general"
+            team = "platform"
+          }
         }
-      ]
-    }
-    
-    # Monitoring nodes
-    monitoring = {
-      instance_types = ["t3.medium"]
-      capacity_type  = "ON_DEMAND"
-      desired_size   = 2
-      max_size      = 3
-      min_size      = 1
-      disk_size     = 50
-      
-      labels = {
-        role = "monitoring"
+        
+        # Compute-optimized nodes for CPU-intensive workloads
+        "compute" = {
+          subnet_ids     = ["subnet-private-1", "subnet-private-2"]
+          capacity_type  = "ON_DEMAND"
+          ami_type      = "AL2_x86_64"
+          instance_types = ["c5.large", "c5.xlarge"]
+          disk_size     = 30
+          
+          scaling_config = {
+            desired_size = 2
+            max_size     = 8
+            min_size     = 1
+          }
+          
+          labels = {
+            role = "compute"
+            workload = "cpu-intensive"
+          }
+          
+          taints = [
+            {
+              key    = "workload"
+              value  = "compute"
+              effect = "NoSchedule"
+            }
+          ]
+        }
+        
+        # Spot instances for cost optimization
+        "spot" = {
+          subnet_ids     = ["subnet-private-1", "subnet-private-2"]
+          capacity_type  = "SPOT"
+          ami_type      = "AL2_x86_64"
+          instance_types = ["t3.medium", "t3.large", "m5.large"]
+          disk_size     = 30
+          
+          scaling_config = {
+            desired_size = 2
+            max_size     = 15
+            min_size     = 0
+          }
+          
+          labels = {
+            role = "spot"
+            cost-optimized = "true"
+          }
+          
+          taints = [
+            {
+              key    = "kubernetes.io/arch"
+              value  = "spot"
+              effect = "NoSchedule"
+            }
+          ]
+        }
       }
       
-      taints = [
-        {
-          key    = "monitoring"
-          value  = "true"
-          effect = "NO_SCHEDULE"
+      # Fargate profiles for serverless workloads
+      fargate_profiles = {
+        "default" = {
+          subnet_ids = ["subnet-private-1", "subnet-private-2"]
+          selectors = [
+            {
+              namespace = "default"
+              labels = {
+                compute-type = "fargate"
+              }
+            },
+            {
+              namespace = "kube-system"
+              labels = {
+                k8s-app = "kube-dns"
+              }
+            }
+          ]
         }
-      ]
+        
+        "applications" = {
+          subnet_ids = ["subnet-private-1", "subnet-private-2"]
+          selectors = [
+            {
+              namespace = "applications"
+            }
+          ]
+        }
+      }
+      
+      # Essential add-ons
+      addons = {
+        "vpc-cni" = {
+          addon_version = "v1.15.1-eksbuild.1"
+          resolve_conflicts_on_create = "OVERWRITE"
+          resolve_conflicts_on_update = "OVERWRITE"
+          configuration_values = jsonencode({
+            enableNetworkPolicy = "true"
+          })
+        }
+        
+        "coredns" = {
+          addon_version = "v1.10.1-eksbuild.4"
+          resolve_conflicts_on_create = "OVERWRITE"
+          configuration_values = jsonencode({
+            computeType = "Fargate"
+          })
+        }
+        
+        "kube-proxy" = {
+          addon_version = "v1.28.2-eksbuild.2"
+          resolve_conflicts_on_create = "OVERWRITE"
+        }
+        
+        "aws-ebs-csi-driver" = {
+          addon_version = "v1.24.1-eksbuild.1"
+          service_account_role_arn = module.iam.ebs_csi_driver_role_arn
+          resolve_conflicts_on_create = "OVERWRITE"
+        }
+        
+        "aws-efs-csi-driver" = {
+          addon_version = "v1.7.1-eksbuild.1"
+          service_account_role_arn = module.iam.efs_csi_driver_role_arn
+          resolve_conflicts_on_create = "OVERWRITE"
+        }
+        
+        "aws-load-balancer-controller" = {
+          addon_version = "v2.6.1-eksbuild.1"
+          service_account_role_arn = module.iam.aws_load_balancer_controller_role_arn
+          resolve_conflicts_on_create = "OVERWRITE"
+        }
+      }
     }
   }
-  
-  # Fargate profiles for serverless workloads
-  fargate_profiles = {
-    # System components on Fargate
-    system = {
-      selectors = [
-        {
-          namespace = "kube-system"
-          labels = {
-            component = "fargate"
-          }
-        }
-      ]
-    }
-    
-    # Application workloads on Fargate
-    applications = {
-      selectors = [
-        {
-          namespace = "prod-apps"
-          labels = {
-            compute-type = "fargate"
-          }
-        },
-        {
-          namespace = "staging-apps"
-          labels = {
-            compute-type = "fargate"
-          }
-        }
-      ]
-    }
-  }
-  
-  # Latest EKS managed add-ons
-  cluster_addons = {
-    vpc-cni = {
-      addon_version = "v1.18.1-eksbuild.1"
-      resolve_conflicts = "OVERWRITE"
-    }
-    coredns = {
-      addon_version = "v1.11.1-eksbuild.4"
-      resolve_conflicts = "OVERWRITE"
-    }
-    kube-proxy = {
-      addon_version = "v1.31.0-eksbuild.2"
-      resolve_conflicts = "OVERWRITE"
-    }
-    aws-ebs-csi-driver = {
-      addon_version = "v1.31.0-eksbuild.1"
-      resolve_conflicts = "OVERWRITE"
-    }
-  }
-  
-  # Marketplace add-ons with latest versions
-  enable_aws_load_balancer_controller = true
-  aws_load_balancer_controller_chart_version = "1.8.1"
-  
-  enable_cluster_autoscaler = true
-  cluster_autoscaler_chart_version = "9.37.0"
-  
-  enable_metrics_server = true
-  metrics_server_chart_version = "3.12.1"
-  
-  enable_aws_node_termination_handler = true
-  enable_external_dns = true
-  external_dns_domain_name = "company.com"
-  
+
   tags = {
     Environment = "production"
-    Project     = "my-app"
-    Backup      = "required"
-    Compliance  = "SOC2"
+    Project     = "enterprise-app"
+    Team        = "platform"
     CostCenter  = "engineering"
   }
 }
 ```
 
-### Development EKS Cluster (Cost-Optimized)
+### Development Environment with Fargate
 
 ```hcl
-module "dev_eks" {
-  source = "../../modules/eks"
+module "eks_dev" {
+  source = "./modules/eks"
 
-  # Minimal configuration for development
-  create_cluster  = true
-  cluster_name    = "dev-eks-cluster"
-  cluster_version = "1.31"
-  
-  vpc_id     = module.vpc.vpc_id
-  subnet_ids = module.vpc.private_subnets
-  
-  # Allow public access for development
-  cluster_endpoint_public_access = true
-  
-  # Minimal logging
-  cluster_enabled_log_types = ["api", "audit"]
-  
-  # Single node group with SPOT instances
-  node_groups = {
-    general = {
-      instance_types = ["t3.small", "t3.medium"]
-      capacity_type  = "SPOT"  # Maximum cost savings
-      desired_size   = 1
-      max_size      = 3
-      min_size      = 1
-      disk_size     = 20  # Smaller disks for development
+  name_prefix = "dev"
+
+  eks_clusters = {
+    "development" = {
+      version    = "1.28"
+      subnet_ids = ["subnet-dev-1", "subnet-dev-2"]
       
-      labels = {
-        environment = "dev"
-        cost-optimized = "true"
+      # Allow public access for development
+      endpoint_private_access = true
+      endpoint_public_access  = true
+      public_access_cidrs    = ["10.0.0.0/8"]  # Restrict to VPC
+      
+      enabled_cluster_log_types = ["api", "audit"]
+      
+      # Only Fargate for cost optimization
+      fargate_profiles = {
+        "development" = {
+          subnet_ids = ["subnet-dev-1", "subnet-dev-2"]
+          selectors = [
+            {
+              namespace = "default"
+            },
+            {
+              namespace = "kube-system"
+            },
+            {
+              namespace = "development"
+            }
+          ]
+        }
+      }
+      
+      addons = {
+        "vpc-cni" = {
+          resolve_conflicts_on_create = "OVERWRITE"
+        }
+        "coredns" = {
+          resolve_conflicts_on_create = "OVERWRITE"
+          configuration_values = jsonencode({
+            computeType = "Fargate"
+          })
+        }
+        "kube-proxy" = {
+          resolve_conflicts_on_create = "OVERWRITE"
+        }
       }
     }
   }
-  
-  # Essential add-ons only
-  cluster_addons = {
-    vpc-cni = {
-      addon_version = "v1.18.1-eksbuild.1"
-    }
-    coredns = {
-      addon_version = "v1.11.1-eksbuild.4"
-    }
-    kube-proxy = {
-      addon_version = "v1.31.0-eksbuild.2"
-    }
-  }
-  
-  # Minimal marketplace add-ons
-  enable_aws_load_balancer_controller = true
-  enable_metrics_server              = true
-  
+
   tags = {
     Environment = "development"
+    AutoShutdown = "enabled"
     CostOptimized = "true"
   }
 }
 ```
 
-### Multi-Environment EKS Setup
+### GPU-Enabled Cluster for ML Workloads
 
 ```hcl
-# Production cluster
-module "prod_eks" {
-  source = "../../modules/eks"
-  
-  cluster_name = "prod-cluster"
-  # ... production configuration
-}
+module "eks_gpu" {
+  source = "./modules/eks"
 
-# Staging cluster
-module "staging_eks" {
-  source = "../../modules/eks"
-  
-  cluster_name = "staging-cluster"
-  # ... staging configuration
-}
+  name_prefix = "ml"
 
-# Development cluster
-module "dev_eks" {
-  source = "../../modules/eks"
-  
-  cluster_name = "dev-cluster"
-  # ... development configuration
+  eks_clusters = {
+    "machine-learning" = {
+      version    = "1.28"
+      subnet_ids = ["subnet-private-1", "subnet-private-2"]
+      
+      endpoint_private_access = true
+      endpoint_public_access  = false
+      
+      enabled_cluster_log_types = ["api", "audit"]
+      
+      node_groups = {
+        # CPU nodes for general workloads
+        "cpu" = {
+          subnet_ids     = ["subnet-private-1", "subnet-private-2"]
+          capacity_type  = "ON_DEMAND"
+          ami_type      = "AL2_x86_64"
+          instance_types = ["m5.large"]
+          
+          scaling_config = {
+            desired_size = 2
+            max_size     = 5
+            min_size     = 1
+          }
+          
+          labels = {
+            node-type = "cpu"
+          }
+        }
+        
+        # GPU nodes for ML training
+        "gpu" = {
+          subnet_ids     = ["subnet-private-1", "subnet-private-2"]
+          capacity_type  = "ON_DEMAND"
+          ami_type      = "AL2_x86_64_GPU"
+          instance_types = ["g4dn.xlarge", "g4dn.2xlarge"]
+          
+          scaling_config = {
+            desired_size = 0
+            max_size     = 10
+            min_size     = 0
+          }
+          
+          labels = {
+            node-type = "gpu"
+            accelerator = "nvidia-tesla-t4"
+          }
+          
+          taints = [
+            {
+              key    = "nvidia.com/gpu"
+              value  = "true"
+              effect = "NoSchedule"
+            }
+          ]
+        }
+      }
+      
+      addons = {
+        "vpc-cni" = {
+          resolve_conflicts_on_create = "OVERWRITE"
+        }
+        "coredns" = {
+          resolve_conflicts_on_create = "OVERWRITE"
+        }
+        "kube-proxy" = {
+          resolve_conflicts_on_create = "OVERWRITE"
+        }
+        "aws-ebs-csi-driver" = {
+          service_account_role_arn = module.iam.ebs_csi_driver_role_arn
+        }
+      }
+    }
+  }
+
+  tags = {
+    Environment = "production"
+    Workload    = "machine-learning"
+    GPUEnabled  = "true"
+  }
 }
 ```
 
-## Configuration Options
+## Requirements
 
-### Required Variables
+| Name | Version |
+|------|---------|
+| terraform | >= 1.9.0 |
+| aws | ~> 5.0 |
+| tls | ~> 4.0 |
 
-| Variable | Type | Description |
-|----------|------|-------------|
-| `cluster_name` | `string` | Name of the EKS cluster |
-| `vpc_id` | `string` | ID of the VPC where cluster will be created |
-| `subnet_ids` | `list(string)` | List of subnet IDs for the cluster |
+## Providers
 
-### Core Configuration
+| Name | Version |
+|------|---------|
+| aws | ~> 5.0 |
+| tls | ~> 4.0 |
 
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `create_cluster` | `bool` | `false` | Whether to create the EKS cluster |
-| `cluster_version` | `string` | `"1.31"` | Kubernetes version |
-| `cluster_endpoint_private_access` | `bool` | `true` | Enable private API access |
-| `cluster_endpoint_public_access` | `bool` | `true` | Enable public API access |
-| `cluster_enabled_log_types` | `list(string)` | `[]` | CloudWatch log types to enable |
+## Inputs
 
-### Node Groups Configuration
+| Name | Description | Type | Default | Required |
+|------|-------------|------|---------|----------|
+| name_prefix | Name prefix for EKS resources | `string` | `"app"` | no |
+| tags | A map of tags to assign to EKS resources | `map(string)` | `{}` | no |
+| log_retention_in_days | Number of days to retain EKS cluster logs | `number` | `7` | no |
+| kms_key_id | KMS key ID for encrypting CloudWatch logs | `string` | `null` | no |
+| eks_clusters | Map of EKS clusters to create | `map(object)` | `{}` | no |
 
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `node_groups` | `map(object)` | `{}` | Map of node group configurations |
+### EKS Cluster Configuration Options
 
-#### Node Group Object Structure
+Each EKS cluster in the `eks_clusters` map supports the following configuration options:
 
-```hcl
-{
-  instance_types = list(string)  # EC2 instance types
-  capacity_type  = string        # "ON_DEMAND" or "SPOT"
-  desired_size   = number        # Desired number of nodes
-  max_size      = number         # Maximum number of nodes
-  min_size      = number         # Minimum number of nodes
-  disk_size     = number         # EBS volume size in GB
-  labels        = map(string)    # Kubernetes labels
-  taints        = list(object)   # Kubernetes taints
-}
-```
-
-### Fargate Configuration
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `fargate_profiles` | `map(object)` | `{}` | Map of Fargate profile configurations |
-
-### Add-ons Configuration
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `cluster_addons` | `map(object)` | `{}` | EKS managed add-ons configuration |
-| `enable_aws_load_balancer_controller` | `bool` | `false` | Enable AWS Load Balancer Controller |
-| `enable_cluster_autoscaler` | `bool` | `false` | Enable Cluster Autoscaler |
-| `enable_metrics_server` | `bool` | `false` | Enable Metrics Server |
+| Parameter | Description | Type | Default |
+|-----------|-------------|------|---------|
+| `version` | Kubernetes version | `string` | Latest |
+| `subnet_ids` | List of subnet IDs for the cluster | `list(string)` | Required |
+| `endpoint_private_access` | Enable private API server endpoint | `bool` | `true` |
+| `endpoint_public_access` | Enable public API server endpoint | `bool` | `false` |
+| `public_access_cidrs` | CIDR blocks for public access | `list(string)` | `["0.0.0.0/0"]` |
+| `security_group_ids` | Additional security groups | `list(string)` | `[]` |
+| `encryption_config` | Encryption configuration for secrets | `object` | `null` |
+| `enabled_cluster_log_types` | Control plane logging types | `list(string)` | `[]` |
+| `access_config` | Cluster access configuration | `object` | `null` |
+| `node_groups` | Managed node groups | `map(object)` | `{}` |
+| `fargate_profiles` | Fargate profiles | `map(object)` | `{}` |
+| `addons` | EKS add-ons | `map(object)` | `{}` |
 
 ## Outputs
 
-### Cluster Information
+| Name | Description |
+|------|-------------|
+| eks_clusters | Map of EKS cluster information |
+| cluster_endpoints | EKS cluster endpoints |
+| cluster_arns | EKS cluster ARNs |
+| cluster_certificate_authorities | EKS cluster certificate authority data |
+| node_groups | Map of EKS node group information |
+| fargate_profiles | Map of EKS Fargate profile information |
+| addons | Map of EKS add-on information |
+| oidc_provider_arns | EKS OIDC identity provider ARNs |
+| kubeconfig | kubectl configuration for connecting to clusters |
 
-| Output | Description |
-|--------|-------------|
-| `cluster_id` | EKS cluster ID |
-| `cluster_arn` | EKS cluster ARN |
-| `cluster_endpoint` | EKS cluster API server endpoint |
-| `cluster_version` | EKS cluster Kubernetes version |
-| `cluster_security_group_id` | EKS cluster security group ID |
+## Supported Kubernetes Versions
 
-### Authentication
+The module supports all currently available EKS Kubernetes versions:
+- **1.24** (Deprecated - use for legacy workloads only)
+- **1.25** (Deprecated - upgrade recommended)
+- **1.26** (Supported)
+- **1.27** (Supported)
+- **1.28** (Recommended)
+- **1.29** (Latest)
 
-| Output | Description |
-|--------|-------------|
-| `cluster_certificate_authority_data` | Base64 encoded certificate data |
-| `cluster_oidc_issuer_url` | OIDC issuer URL for IAM roles |
+## Node Group Types
 
-### Node Groups
+### Managed Node Groups
+- **On-Demand**: Predictable pricing and availability
+- **Spot**: Cost-optimized with potential interruptions
+- **Mixed**: Combination of On-Demand and Spot instances
 
-| Output | Description |
-|--------|-------------|
-| `node_groups` | Map of node group attributes |
-| `fargate_profiles` | Map of Fargate profile attributes |
+### AMI Types
+- **AL2_x86_64**: Amazon Linux 2 with x86_64 architecture
+- **AL2_x86_64_GPU**: Amazon Linux 2 with GPU support
+- **AL2_ARM_64**: Amazon Linux 2 with ARM64 architecture (Graviton processors)
+- **BOTTLEROCKET_ARM_64**: Bottlerocket Linux with ARM64
+- **BOTTLEROCKET_x86_64**: Bottlerocket Linux with x86_64
+- **WINDOWS_CORE_2019_x86_64**: Windows Server 2019 Core
+- **WINDOWS_FULL_2019_x86_64**: Windows Server 2019 Full
+- **WINDOWS_CORE_2022_x86_64**: Windows Server 2022 Core
+- **WINDOWS_FULL_2022_x86_64**: Windows Server 2022 Full
 
-### IAM
+## Essential Add-ons
 
-| Output | Description |
-|--------|-------------|
-| `cluster_iam_role_arn` | EKS cluster IAM role ARN |
-| `node_group_iam_role_arn` | EKS node group IAM role ARN |
-
-## Best Practices
-
-### 🔒 **Security Best Practices**
-
-1. **Network Security**
-   - Use private API endpoints for production clusters
-   - Implement network policies to restrict pod-to-pod communication
-   - Use security groups to control access to worker nodes
-
-2. **IAM and RBAC**
-   - Implement least-privilege access with IAM roles
-   - Use Kubernetes RBAC for fine-grained permissions
-   - Enable audit logging for compliance requirements
-
-3. **Secrets Management**
-   - Use AWS Secrets Manager or Parameter Store for sensitive data
-   - Enable secrets encryption with customer-managed KMS keys
-   - Rotate secrets regularly
-
-### ⚡ **Performance Best Practices**
-
-1. **Node Group Strategy**
-   - Use multiple node groups for different workload types
-   - Mix ON_DEMAND and SPOT instances based on workload criticality
-   - Right-size instances based on actual resource usage
-
-2. **Cluster Autoscaling**
-   - Configure appropriate scaling policies
-   - Use node affinity and anti-affinity rules
-   - Implement pod disruption budgets for critical workloads
-
-3. **Resource Management**
-   - Set resource requests and limits for all containers
-   - Use Horizontal Pod Autoscaler (HPA) for application scaling
-   - Monitor and optimize cluster utilization
-
-### 💰 **Cost Optimization**
-
-1. **Instance Selection**
-   - **SPOT Instances**: Use for development and fault-tolerant workloads (90% savings)
-   - **Reserved Instances**: Purchase for predictable production workloads (30-50% savings)
-   - **Rightsizing**: Monitor and adjust instance types based on actual usage
-
-2. **Cluster Efficiency**
-   - Use cluster autoscaler to scale down unused nodes
-   - Implement pod packing to maximize node utilization
-   - Consider Fargate for workloads with variable traffic patterns
-
-3. **Monitoring and Optimization**
-   - Use AWS Cost Explorer to analyze EKS costs
-   - Implement resource quotas and limits
-   - Regular cost reviews and optimization cycles
-
-## Integration Examples
-
-### ALB Ingress Integration
-
-```yaml
-# Application Load Balancer Ingress
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: my-app-ingress
-  annotations:
-    kubernetes.io/ingress.class: alb
-    alb.ingress.kubernetes.io/scheme: internet-facing
-    alb.ingress.kubernetes.io/target-type: ip
-spec:
-  rules:
-    - http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: my-app-service
-                port:
-                  number: 80
+### Core Add-ons
+```hcl
+addons = {
+  "vpc-cni" = {
+    addon_version = "v1.15.1-eksbuild.1"
+    configuration_values = jsonencode({
+      enableNetworkPolicy = "true"
+      warmENITarget      = "1"
+      warmIPTarget       = "5"
+    })
+  }
+  
+  "coredns" = {
+    addon_version = "v1.10.1-eksbuild.4"
+    configuration_values = jsonencode({
+      computeType = "Fargate"  # or "ec2"
+      resources = {
+        limits = {
+          memory = "170Mi"
+        }
+        requests = {
+          cpu    = "100m"
+          memory = "70Mi"
+        }
+      }
+    })
+  }
+  
+  "kube-proxy" = {
+    addon_version = "v1.28.2-eksbuild.2"
+  }
+}
 ```
 
-### Horizontal Pod Autoscaler
-
-```yaml
-# HPA with custom metrics
-apiVersion: autoscaling/v2
-kind: HorizontalPodAutoscaler
-metadata:
-  name: my-app-hpa
-spec:
-  scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: my-app
-  minReplicas: 2
-  maxReplicas: 10
-  metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      target:
-        type: Utilization
-        averageUtilization: 70
-  - type: Resource
-    resource:
-      name: memory
-      target:
-        type: Utilization
-        averageUtilization: 80
+### Storage Add-ons
+```hcl
+addons = {
+  "aws-ebs-csi-driver" = {
+    addon_version            = "v1.24.1-eksbuild.1"
+    service_account_role_arn = aws_iam_role.ebs_csi_driver.arn
+    configuration_values = jsonencode({
+      defaultStorageClass = {
+        enabled = true
+      }
+      storageClasses = [
+        {
+          name = "gp3"
+          annotations = {
+            "storageclass.kubernetes.io/is-default-class" = "true"
+          }
+          parameters = {
+            type = "gp3"
+            fsType = "ext4"
+          }
+        }
+      ]
+    })
+  }
+  
+  "aws-efs-csi-driver" = {
+    addon_version            = "v1.7.1-eksbuild.1"
+    service_account_role_arn = aws_iam_role.efs_csi_driver.arn
+  }
+}
 ```
 
-### SPOT Instance Handling
+### Networking Add-ons
+```hcl
+addons = {
+  "aws-load-balancer-controller" = {
+    addon_version            = "v2.6.1-eksbuild.1"
+    service_account_role_arn = aws_iam_role.aws_load_balancer_controller.arn
+    configuration_values = jsonencode({
+      clusterName = var.cluster_name
+      serviceAccount = {
+        create = false
+        name   = "aws-load-balancer-controller"
+      }
+    })
+  }
+}
+```
 
+## Security Best Practices
+
+### 1. Network Security
+- **Private Clusters**: Deploy clusters with private endpoints only
+- **Security Groups**: Implement least-privilege security group rules
+- **Network Policies**: Use Calico or other CNI plugins for pod-to-pod security
+- **VPC Integration**: Deploy in private subnets with NAT gateway access
+
+### 2. IAM and RBAC
+- **IRSA (IAM Roles for Service Accounts)**: Use OIDC for secure pod-to-AWS API access
+- **Cluster Access**: Implement proper RBAC with AWS IAM integration
+- **Service Accounts**: Create dedicated service accounts for each application
+- **Least Privilege**: Grant minimal required permissions
+
+### 3. Encryption and Secrets Management
+- **Encryption at Rest**: Enable envelope encryption for Kubernetes secrets
+- **Encryption in Transit**: All communication encrypted with TLS
+- **External Secrets**: Use AWS Secrets Manager or Parameter Store
+- **Key Management**: Customer-managed KMS keys for enhanced security
+
+### 4. Pod Security
+- **Pod Security Standards**: Implement Kubernetes Pod Security Standards
+- **Security Contexts**: Configure appropriate security contexts for pods
+- **Network Policies**: Restrict pod-to-pod communication
+- **Image Security**: Use trusted registries and scan images for vulnerabilities
+
+## Monitoring and Observability
+
+### Control Plane Logging
+```hcl
+enabled_cluster_log_types = [
+  "api",              # API server requests
+  "audit",            # Audit logs
+  "authenticator",    # Authenticator logs
+  "controllerManager", # Controller manager logs
+  "scheduler"         # Scheduler logs
+]
+```
+
+### Container Insights
 ```yaml
-# Node affinity for SPOT instances
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: amazon-cloudwatch
+  labels:
+    name: amazon-cloudwatch
+
+---
 apiVersion: apps/v1
-kind: Deployment
+kind: DaemonSet
 metadata:
-  name: batch-job
+  name: cloudwatch-agent
+  namespace: amazon-cloudwatch
 spec:
-  replicas: 3
-  template:
-    spec:
-      affinity:
-        nodeAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - weight: 50
-            preference:
-              matchExpressions:
-              - key: node.kubernetes.io/instance-type
-                operator: In
-                values: ["m5.large", "m5.xlarge"]
-              - key: eks.amazonaws.com/capacityType
-                operator: In
-                values: ["SPOT"]
+  # CloudWatch Agent configuration
 ```
 
-## Post-Deployment Configuration
+### Prometheus and Grafana
+```yaml
+# Install using Helm
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo add grafana https://grafana.github.io/helm-charts
+helm repo update
 
-### kubectl Configuration
-
-```bash
-# Configure kubectl to access the cluster
-aws eks update-kubeconfig --region us-east-1 --name my-eks-cluster
-
-# Verify cluster access
-kubectl get nodes
-kubectl get pods --all-namespaces
-
-# Check cluster info
-kubectl cluster-info
+helm install prometheus prometheus-community/kube-prometheus-stack \
+  --namespace monitoring \
+  --create-namespace \
+  --set grafana.adminPassword=admin123
 ```
 
-### Add-on Verification
+## Cost Optimization
 
-```bash
-# Verify AWS Load Balancer Controller
-kubectl get deployment -n kube-system aws-load-balancer-controller
+### 1. Right-sizing Node Groups
+```hcl
+# Use diverse instance types for better spot availability
+instance_types = ["t3.medium", "t3.large", "m5.large", "m5a.large"]
 
-# Check Cluster Autoscaler
-kubectl get deployment -n kube-system cluster-autoscaler
-
-# Verify Metrics Server
-kubectl get deployment -n kube-system metrics-server
-
-# Test HPA functionality
-kubectl top nodes
-kubectl top pods
+# Enable cluster autoscaler
+labels = {
+  "k8s.io/cluster-autoscaler/enabled" = "true"
+  "k8s.io/cluster-autoscaler/${cluster_name}" = "owned"
+}
 ```
 
-### Cluster Monitoring
+### 2. Spot Instances
+```hcl
+node_groups = {
+  "spot-workers" = {
+    capacity_type  = "SPOT"
+    instance_types = ["t3.medium", "t3.large", "m5.large"]
+    
+    scaling_config = {
+      desired_size = 3
+      max_size     = 20
+      min_size     = 0
+    }
+  }
+}
+```
 
-```bash
-# Check node status
-kubectl describe nodes
-
-# Monitor cluster events
-kubectl get events --sort-by=.metadata.creationTimestamp
-
-# Check resource utilization
-kubectl top nodes
-kubectl top pods --all-namespaces
+### 3. Fargate for Batch Jobs
+```hcl
+fargate_profiles = {
+  "batch-jobs" = {
+    selectors = [
+      {
+        namespace = "batch"
+        labels = {
+          compute-type = "fargate"
+        }
+      }
+    ]
+  }
+}
 ```
 
 ## Troubleshooting
 
 ### Common Issues
 
-#### **Node Group Scaling Issues**
-```bash
-# Check autoscaler logs
-kubectl logs -f deployment/cluster-autoscaler -n kube-system
+#### 1. Node Group Creation Fails
+```
+Error: InvalidParameterException: The following supplied subnets do not exist
+```
+**Solution**: Verify subnet IDs are correct and exist in the same region.
 
-# Verify node group configuration
-aws eks describe-nodegroup --cluster-name my-cluster --nodegroup-name my-nodegroup
+#### 2. Pods Cannot Pull Images
+```
+Error: ImagePullBackOff
+```
+**Solutions**:
+- Check IAM permissions for ECR access
+- Verify VPC endpoints for ECR if using private subnets
+- Ensure internet connectivity through NAT gateway
+
+#### 3. Load Balancer Controller Issues
+```
+Error: failed to build load balancer configuration
+```
+**Solutions**:
+- Verify IAM role for service account is correctly configured
+- Check subnet tags for load balancer discovery
+- Ensure security groups allow required traffic
+
+#### 4. Cluster Autoscaler Not Working
+```
+Warning: FailedScheduling - insufficient cpu
+```
+**Solutions**:
+- Verify cluster autoscaler has proper IAM permissions
+- Check node group tags for cluster autoscaler discovery
+- Review scaling policies and limits
+
+### Debugging Commands
+
+```bash
+# Check cluster status
+aws eks describe-cluster --name cluster-name
+
+# Get cluster endpoint and certificate
+aws eks update-kubeconfig --name cluster-name
+
+# Check node groups
+aws eks describe-nodegroup --cluster-name cluster-name --nodegroup-name nodegroup-name
+
+# View cluster logs
+aws logs describe-log-groups --log-group-name-prefix /aws/eks/cluster-name
+
+# Check add-on status
+aws eks describe-addon --cluster-name cluster-name --addon-name vpc-cni
+
+# Kubernetes troubleshooting
+kubectl get nodes
+kubectl describe node node-name
+kubectl get pods --all-namespaces
+kubectl describe pod pod-name -n namespace
+kubectl logs pod-name -n namespace
 ```
 
-#### **Pod Scheduling Problems**
-```bash
-# Check pod status
-kubectl get pods -o wide
+## Integration Examples
 
-# Describe problematic pods
-kubectl describe pod <pod-name>
+### CI/CD Pipeline Integration
+```yaml
+# GitHub Actions example
+name: Deploy to EKS
+on:
+  push:
+    branches: [main]
 
-# Check node resources
-kubectl describe nodes
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-west-2
+    
+    - name: Update kubeconfig
+      run: |
+        aws eks update-kubeconfig --name ${{ secrets.CLUSTER_NAME }}
+    
+    - name: Deploy to EKS
+      run: |
+        kubectl apply -f k8s/
 ```
 
-#### **Load Balancer Controller Issues**
-```bash
-# Check controller logs
-kubectl logs -f deployment/aws-load-balancer-controller -n kube-system
+### Application Deployment
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sample-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: sample-app
+  template:
+    metadata:
+      labels:
+        app: sample-app
+    spec:
+      serviceAccountName: sample-app-sa
+      nodeSelector:
+        role: general
+      containers:
+      - name: app
+        image: nginx:latest
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
 
-# Verify IAM permissions
-aws iam get-role --role-name AmazonEKSLoadBalancerControllerRole
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sample-app-service
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+spec:
+  type: LoadBalancer
+  selector:
+    app: sample-app
+  ports:
+  - port: 80
+    targetPort: 80
 ```
 
-## Requirements
+## Contributing
 
-- **Terraform**: >= 1.9.0
-- **AWS Provider**: ~> 5.80
-- **Kubernetes Provider**: ~> 2.24
-- **Helm Provider**: ~> 2.10
-- **AWS CLI**: Latest version for post-deployment configuration
-- **kubectl**: Compatible with Kubernetes 1.31
+1. Fork the repository
+2. Create a feature branch
+3. Make changes following the coding standards
+4. Add tests for new functionality
+5. Update documentation
+6. Submit a pull request
 
-## Related Documentation
+### Development Guidelines
 
-- [Amazon EKS User Guide](https://docs.aws.amazon.com/eks/latest/userguide/)
-- [EKS Best Practices Guide](https://aws.github.io/aws-eks-best-practices/)
-- [Kubernetes Documentation](https://kubernetes.io/docs/)
-- [AWS Load Balancer Controller](https://kubernetes-sigs.github.io/aws-load-balancer-controller/)
-- [Cluster Autoscaler](https://github.com/kubernetes/autoscaler/tree/master/cluster-autoscaler)
+- Follow Terraform best practices
+- Use meaningful variable names and descriptions
+- Add comprehensive validation rules
+- Include examples in documentation
+- Test with multiple Kubernetes versions
+- Ensure backward compatibility
+
+## License
+
+This module is licensed under the MIT License. See [LICENSE](LICENSE) for full details.
+
+## Authors
+
+- **Diego A. Zarate** - *Initial work* - [GitHub Profile](https://github.com/dzarate)
+
+## Acknowledgments
+
+- AWS EKS documentation and best practices
+- Kubernetes community documentation
+- Terraform AWS Provider documentation
+- AWS Well-Architected Framework
+- Community feedback and contributions
 
 ---
 
-## 👤 Author
-
-**Diego A. Zarate** - *Kubernetes & Container Orchestration Specialist*
-
----
-
-> 🚀 **Container Orchestration Excellence**: This EKS module provides enterprise-grade Kubernetes infrastructure with cost optimization, security, and operational excellence built-in from day one.
+**Note**: This module follows semantic versioning. Please check the [CHANGELOG](CHANGELOG.md) for version-specific changes and migration guides.

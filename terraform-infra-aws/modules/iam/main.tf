@@ -1,181 +1,219 @@
-# =============================================================================
-# IAM MODULE
-# =============================================================================
+# IAM Module - Main Configuration
+# Author: Diego A. Zarate
+# This module creates IAM resources following AWS best practices and least privilege principles
 
-terraform {
-  required_version = ">= 1.9.0"
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.80"
+# Data sources for AWS managed policies
+data "aws_iam_policy_document" "assume_role_policy" {
+  for_each = var.iam_roles
+
+  statement {
+    effect = "Allow"
+    
+    principals {
+      type        = each.value.principal_type
+      identifiers = each.value.principal_identifiers
+    }
+    
+    actions = ["sts:AssumeRole"]
+    
+    dynamic "condition" {
+      for_each = lookup(each.value, "assume_role_conditions", [])
+      content {
+        test     = condition.value.test
+        variable = condition.value.variable
+        values   = condition.value.values
+      }
     }
   }
 }
 
-# =============================================================================
-# IAM ROLES
-# =============================================================================
+# IAM Roles
+resource "aws_iam_role" "this" {
+  for_each = var.iam_roles
 
-resource "aws_iam_role" "roles" {
-  for_each = var.roles
-
-  name                  = each.key
-  assume_role_policy    = each.value.assume_role_policy
-  description           = lookup(each.value, "description", null)
-  force_detach_policies = lookup(each.value, "force_detach_policies", false)
+  name                  = "${var.name_prefix}-${each.key}-role"
+  description           = each.value.description
+  assume_role_policy    = data.aws_iam_policy_document.assume_role_policy[each.key].json
   max_session_duration  = lookup(each.value, "max_session_duration", 3600)
   path                  = lookup(each.value, "path", "/")
   permissions_boundary  = lookup(each.value, "permissions_boundary", null)
+  force_detach_policies = lookup(each.value, "force_detach_policies", true)
 
   dynamic "inline_policy" {
-    for_each = lookup(each.value, "inline_policies", {})
+    for_each = lookup(each.value, "inline_policies", [])
     content {
-      name   = inline_policy.key
-      policy = inline_policy.value
+      name   = inline_policy.value.name
+      policy = inline_policy.value.policy
     }
   }
 
-  tags = merge(var.tags, lookup(each.value, "tags", {}))
+  tags = merge(var.tags, lookup(each.value, "tags", {}), {
+    Name = "${var.name_prefix}-${each.key}-role"
+  })
 }
 
-# =============================================================================
-# IAM ROLE POLICY ATTACHMENTS
-# =============================================================================
+# Attach AWS managed policies to roles
+resource "aws_iam_role_policy_attachment" "aws_managed" {
+  for_each = local.role_aws_managed_policies_map
 
-resource "aws_iam_role_policy_attachment" "policy_attachments" {
-  for_each = local.role_policy_attachments
-
-  role       = aws_iam_role.roles[each.value.role].name
+  role       = aws_iam_role.this[each.value.role_name].name
   policy_arn = each.value.policy_arn
 }
 
-locals {
-  role_policy_attachments = merge([
-    for role_name, role_config in var.roles : {
-      for policy_arn in lookup(role_config, "policy_arns", []) : "${role_name}-${policy_arn}" => {
-        role       = role_name
-        policy_arn = policy_arn
-      }
-    }
-  ]...)
+# Attach custom managed policies to roles
+resource "aws_iam_role_policy_attachment" "custom_managed" {
+  for_each = local.role_custom_managed_policies_map
+
+  role       = aws_iam_role.this[each.value.role_name].name
+  policy_arn = aws_iam_policy.this[each.value.policy_name].arn
+
+  depends_on = [aws_iam_policy.this]
 }
 
-# =============================================================================
-# IAM POLICIES
-# =============================================================================
+# Custom IAM Policies
+resource "aws_iam_policy" "this" {
+  for_each = var.iam_policies
 
-resource "aws_iam_policy" "policies" {
-  for_each = var.policies
-
-  name        = each.key
-  policy      = each.value.policy_document
-  description = lookup(each.value, "description", null)
+  name        = "${var.name_prefix}-${each.key}-policy"
+  description = each.value.description
   path        = lookup(each.value, "path", "/")
+  policy      = each.value.policy_document
 
-  tags = merge(var.tags, lookup(each.value, "tags", {}))
+  tags = merge(var.tags, lookup(each.value, "tags", {}), {
+    Name = "${var.name_prefix}-${each.key}-policy"
+  })
 }
 
-# =============================================================================
-# IAM GROUPS
-# =============================================================================
+# IAM Groups
+resource "aws_iam_group" "this" {
+  for_each = var.iam_groups
 
-resource "aws_iam_group" "groups" {
-  for_each = var.groups
-
-  name = each.key
+  name = "${var.name_prefix}-${each.key}-group"
   path = lookup(each.value, "path", "/")
 }
 
-# =============================================================================
-# IAM GROUP POLICY ATTACHMENTS
-# =============================================================================
+# Attach AWS managed policies to groups
+resource "aws_iam_group_policy_attachment" "aws_managed" {
+  for_each = local.group_aws_managed_policies_map
 
-resource "aws_iam_group_policy_attachment" "group_policy_attachments" {
-  for_each = local.group_policy_attachments
-
-  group      = aws_iam_group.groups[each.value.group].name
+  group      = aws_iam_group.this[each.value.group_name].name
   policy_arn = each.value.policy_arn
 }
 
-locals {
-  group_policy_attachments = merge([
-    for group_name, group_config in var.groups : {
-      for policy_arn in lookup(group_config, "policy_arns", []) : "${group_name}-${policy_arn}" => {
-        group      = group_name
-        policy_arn = policy_arn
-      }
-    }
-  ]...)
+# Attach custom managed policies to groups
+resource "aws_iam_group_policy_attachment" "custom_managed" {
+  for_each = local.group_custom_managed_policies_map
+
+  group      = aws_iam_group.this[each.value.group_name].name
+  policy_arn = aws_iam_policy.this[each.value.policy_name].arn
+
+  depends_on = [aws_iam_policy.this]
 }
 
-# =============================================================================
-# IAM USERS
-# =============================================================================
+# IAM Users
+resource "aws_iam_user" "this" {
+  for_each = var.create_users ? var.iam_users : {}
 
-resource "aws_iam_user" "users" {
-  for_each = var.users
-
-  name                 = each.key
+  name                 = "${var.name_prefix}-${each.key}"
   path                 = lookup(each.value, "path", "/")
   permissions_boundary = lookup(each.value, "permissions_boundary", null)
   force_destroy        = lookup(each.value, "force_destroy", false)
 
-  tags = merge(var.tags, lookup(each.value, "tags", {}))
+  tags = merge(var.tags, lookup(each.value, "tags", {}), {
+    Name = "${var.name_prefix}-${each.key}"
+  })
 }
 
-# =============================================================================
-# IAM USER POLICY ATTACHMENTS
-# =============================================================================
+# Add users to groups
+resource "aws_iam_group_membership" "this" {
+  for_each = local.group_memberships
 
-resource "aws_iam_user_policy_attachment" "user_policy_attachments" {
-  for_each = local.user_policy_attachments
+  name  = "${var.name_prefix}-${each.key}-membership"
+  group = aws_iam_group.this[each.value.group_name].name
+  users = [for user in each.value.users : aws_iam_user.this[user].name]
 
-  user       = aws_iam_user.users[each.value.user].name
-  policy_arn = each.value.policy_arn
+  depends_on = [aws_iam_user.this, aws_iam_group.this]
 }
 
-locals {
-  user_policy_attachments = merge([
-    for user_name, user_config in var.users : {
-      for policy_arn in lookup(user_config, "policy_arns", []) : "${user_name}-${policy_arn}" => {
-        user       = user_name
-        policy_arn = policy_arn
-      }
-    }
-  ]...)
+# IAM Access Keys (only if explicitly enabled)
+resource "aws_iam_access_key" "this" {
+  for_each = var.create_access_keys ? var.user_access_keys : {}
+
+  user   = aws_iam_user.this[each.key].name
+  status = lookup(each.value, "status", "Active")
+
+  depends_on = [aws_iam_user.this]
 }
 
-# =============================================================================
-# IAM USER GROUP MEMBERSHIPS
-# =============================================================================
+# Service-Linked Roles
+resource "aws_iam_service_linked_role" "this" {
+  for_each = var.service_linked_roles
 
-resource "aws_iam_user_group_membership" "user_group_memberships" {
-  for_each = local.user_group_memberships
+  aws_service_name = each.value.aws_service_name
+  description      = lookup(each.value, "description", "Service-linked role for ${each.value.aws_service_name}")
+  custom_suffix    = lookup(each.value, "custom_suffix", null)
 
-  user   = aws_iam_user.users[each.value.user].name
-  groups = each.value.groups
+  tags = merge(var.tags, lookup(each.value, "tags", {}), {
+    Name = "${var.name_prefix}-${each.key}-service-role"
+  })
 }
 
-locals {
-  user_group_memberships = {
-    for user_name, user_config in var.users : user_name => {
-      user   = user_name
-      groups = [for group in lookup(user_config, "groups", []) : aws_iam_group.groups[group].name]
-    }
-    if length(lookup(user_config, "groups", [])) > 0
-  }
+# Instance Profile for EC2 roles
+resource "aws_iam_instance_profile" "this" {
+  for_each = local.ec2_roles
+
+  name = "${var.name_prefix}-${each.key}-instance-profile"
+  role = aws_iam_role.this[each.key].name
+  path = lookup(var.iam_roles[each.key], "path", "/")
+
+  tags = merge(var.tags, {
+    Name = "${var.name_prefix}-${each.key}-instance-profile"
+  })
 }
 
-# =============================================================================
-# IAM INSTANCE PROFILES
-# =============================================================================
+# OIDC Identity Providers
+resource "aws_iam_openid_connect_provider" "this" {
+  for_each = var.oidc_providers
 
-resource "aws_iam_instance_profile" "instance_profiles" {
-  for_each = var.instance_profiles
+  url             = each.value.url
+  client_id_list  = each.value.client_id_list
+  thumbprint_list = each.value.thumbprint_list
 
-  name = each.key
-  role = aws_iam_role.roles[each.value.role].name
-  path = lookup(each.value, "path", "/")
+  tags = merge(var.tags, lookup(each.value, "tags", {}), {
+    Name = "${var.name_prefix}-${each.key}-oidc"
+  })
+}
 
-  tags = merge(var.tags, lookup(each.value, "tags", {}))
+# SAML Identity Providers
+resource "aws_iam_saml_provider" "this" {
+  for_each = var.saml_providers
+
+  name                   = "${var.name_prefix}-${each.key}-saml"
+  saml_metadata_document = each.value.saml_metadata_document
+
+  tags = merge(var.tags, lookup(each.value, "tags", {}), {
+    Name = "${var.name_prefix}-${each.key}-saml"
+  })
+}
+
+# Password Policy
+resource "aws_iam_account_password_policy" "this" {
+  count = var.create_account_password_policy ? 1 : 0
+
+  minimum_password_length        = var.password_policy.minimum_password_length
+  require_lowercase_characters   = var.password_policy.require_lowercase_characters
+  require_numbers               = var.password_policy.require_numbers
+  require_uppercase_characters   = var.password_policy.require_uppercase_characters
+  require_symbols               = var.password_policy.require_symbols
+  allow_users_to_change_password = var.password_policy.allow_users_to_change_password
+  hard_expiry                   = var.password_policy.hard_expiry
+  max_password_age              = var.password_policy.max_password_age
+  password_reuse_prevention     = var.password_policy.password_reuse_prevention
+}
+
+# Account Alias
+resource "aws_iam_account_alias" "this" {
+  count = var.account_alias != null ? 1 : 0
+
+  account_alias = var.account_alias
 }

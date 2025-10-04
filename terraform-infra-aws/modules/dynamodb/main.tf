@@ -1,46 +1,128 @@
-# DynamoDB Table
-resource "aws_dynamodb_table" "this" {
-  count = var.create_table ? 1 : 0
+# DynamoDB Module Configuration
+locals {
+  # Common tags
+  common_tags = merge(var.common_tags, {
+    Module = "dynamodb"
+    ManagedBy = "terraform"
+  })
+  
+  # Flatten tables for easier processing
+  tables = {
+    for table_key, table in var.tables : table_key => merge(table, {
+      table_key = table_key
+      name = "${var.name_prefix}-${table_key}"
+      
+      # Set defaults
+      billing_mode = lookup(table, "billing_mode", "PAY_PER_REQUEST")
+      hash_key = table.hash_key
+      range_key = lookup(table, "range_key", null)
+      
+      # Encryption configuration
+      server_side_encryption = lookup(table, "server_side_encryption", {
+        enabled = true
+        kms_key_id = null
+      })
+      
+      # Point-in-time recovery
+      point_in_time_recovery_enabled = lookup(table, "point_in_time_recovery_enabled", true)
+      
+      # DynamoDB Streams
+      stream_enabled = lookup(table, "stream_enabled", false)
+      stream_view_type = lookup(table, "stream_view_type", "NEW_AND_OLD_IMAGES")
+      
+      # Table class
+      table_class = lookup(table, "table_class", "STANDARD")
+      
+      # Deletion protection
+      deletion_protection_enabled = lookup(table, "deletion_protection_enabled", true)
+      
+      # TTL configuration
+      ttl = lookup(table, "ttl", null)
+    })
+  }
+  
+  # Global tables configuration
+  global_tables = {
+    for gt_key, gt in var.global_tables : gt_key => merge(gt, {
+      global_table_key = gt_key
+      name = "${var.name_prefix}-global-${gt_key}"
+      
+      # Replicas configuration with defaults
+      replicas = [
+        for replica in gt.replicas : merge(replica, {
+          region_name = replica.region_name
+          
+          # Point-in-time recovery for replica
+          point_in_time_recovery_enabled = lookup(replica, "point_in_time_recovery_enabled", true)
+          
+          # Table class for replica
+          table_class = lookup(replica, "table_class", "STANDARD")
+          
+          # Global secondary indexes for replica
+          global_secondary_indexes = lookup(replica, "global_secondary_indexes", [])
+        })
+      ]
+    })
+  }
+  
+  # Backup configurations
+  backup_policies = {
+    for table_key, table in local.tables : table_key => lookup(table, "backup", {
+      continuous_backups_enabled = true
+      point_in_time_recovery_enabled = true
+    })
+  }
+}
 
-  name             = var.table_name
-  billing_mode     = var.billing_mode
-  hash_key         = var.hash_key
-  range_key        = var.range_key
-  read_capacity    = var.billing_mode == "PROVISIONED" ? var.read_capacity : null
-  write_capacity   = var.billing_mode == "PROVISIONED" ? var.write_capacity : null
-  stream_enabled   = var.stream_enabled
-  stream_view_type = var.stream_enabled ? var.stream_view_type : null
-
-  table_class                    = var.table_class
-  deletion_protection_enabled    = var.deletion_protection_enabled
-  point_in_time_recovery_enabled = var.point_in_time_recovery_enabled
-
+# DynamoDB Tables
+resource "aws_dynamodb_table" "tables" {
+  for_each = local.tables
+  
+  name           = each.value.name
+  billing_mode   = each.value.billing_mode
+  hash_key       = each.value.hash_key
+  range_key      = each.value.range_key
+  table_class    = each.value.table_class
+  
+  # Read/Write capacity (only for PROVISIONED billing mode)
+  read_capacity  = each.value.billing_mode == "PROVISIONED" ? lookup(each.value, "read_capacity", 5) : null
+  write_capacity = each.value.billing_mode == "PROVISIONED" ? lookup(each.value, "write_capacity", 5) : null
+  
+  # Stream configuration
+  stream_enabled   = each.value.stream_enabled
+  stream_view_type = each.value.stream_enabled ? each.value.stream_view_type : null
+  
+  # Deletion protection
+  deletion_protection_enabled = each.value.deletion_protection_enabled
+  
   # Attributes
   dynamic "attribute" {
-    for_each = var.attributes
+    for_each = each.value.attributes
     content {
       name = attribute.value.name
       type = attribute.value.type
     }
   }
-
+  
   # Global Secondary Indexes
   dynamic "global_secondary_index" {
-    for_each = var.global_secondary_indexes
+    for_each = lookup(each.value, "global_secondary_indexes", [])
     content {
       name               = global_secondary_index.value.name
       hash_key           = global_secondary_index.value.hash_key
       range_key          = lookup(global_secondary_index.value, "range_key", null)
       projection_type    = global_secondary_index.value.projection_type
       non_key_attributes = lookup(global_secondary_index.value, "non_key_attributes", null)
-      read_capacity      = var.billing_mode == "PROVISIONED" ? lookup(global_secondary_index.value, "read_capacity", null) : null
-      write_capacity     = var.billing_mode == "PROVISIONED" ? lookup(global_secondary_index.value, "write_capacity", null) : null
+      
+      # Capacity for provisioned billing mode
+      read_capacity  = each.value.billing_mode == "PROVISIONED" ? lookup(global_secondary_index.value, "read_capacity", 5) : null
+      write_capacity = each.value.billing_mode == "PROVISIONED" ? lookup(global_secondary_index.value, "write_capacity", 5) : null
     }
   }
-
+  
   # Local Secondary Indexes
   dynamic "local_secondary_index" {
-    for_each = var.local_secondary_indexes
+    for_each = lookup(each.value, "local_secondary_indexes", [])
     content {
       name               = local_secondary_index.value.name
       range_key          = local_secondary_index.value.range_key
@@ -48,346 +130,555 @@ resource "aws_dynamodb_table" "this" {
       non_key_attributes = lookup(local_secondary_index.value, "non_key_attributes", null)
     }
   }
-
+  
+  # TTL configuration
+  dynamic "ttl" {
+    for_each = each.value.ttl != null ? [each.value.ttl] : []
+    content {
+      attribute_name = ttl.value.attribute_name
+      enabled        = lookup(ttl.value, "enabled", true)
+    }
+  }
+  
+  # Point-in-time recovery
+  point_in_time_recovery {
+    enabled = each.value.point_in_time_recovery_enabled
+  }
+  
   # Server-side encryption
   dynamic "server_side_encryption" {
-    for_each = var.server_side_encryption_enabled ? [1] : []
+    for_each = each.value.server_side_encryption.enabled ? [each.value.server_side_encryption] : []
     content {
-      enabled     = var.server_side_encryption_enabled
-      kms_key_arn = var.server_side_encryption_kms_key_id
+      enabled     = server_side_encryption.value.enabled
+      kms_key_id  = server_side_encryption.value.kms_key_id
     }
   }
-
-  # TTL
-  dynamic "ttl" {
-    for_each = var.ttl_enabled ? [1] : []
-    content {
-      attribute_name = var.ttl_attribute_name
-      enabled        = var.ttl_enabled
-    }
-  }
-
-  # Replica configuration for global tables
-  dynamic "replica" {
-    for_each = var.replica_regions
-    content {
-      region_name            = replica.value.region_name
-      kms_key_arn            = lookup(replica.value, "kms_key_arn", null)
-      point_in_time_recovery = lookup(replica.value, "point_in_time_recovery", null)
-      propagate_tags         = lookup(replica.value, "propagate_tags", null)
-    }
-  }
-
-  # Import configuration
+  
+  # Import configuration for existing tables
   dynamic "import_table" {
-    for_each = var.import_table != null ? [var.import_table] : []
+    for_each = lookup(each.value, "import_table", null) != null ? [each.value.import_table] : []
     content {
-      bucket_owner = lookup(import_table.value, "bucket_owner", null)
-      s3_bucket_source {
-        bucket       = import_table.value.s3_bucket_source.bucket
-        bucket_owner = lookup(import_table.value.s3_bucket_source, "bucket_owner", null)
-        key_prefix   = lookup(import_table.value.s3_bucket_source, "key_prefix", null)
+      bucket_name    = import_table.value.bucket_name
+      bucket_key_prefix = lookup(import_table.value, "bucket_key_prefix", null)
+      compression_type = lookup(import_table.value, "compression_type", null)
+      
+      input_format_options {
+        csv {
+          delimiter    = lookup(import_table.value.input_format_options.csv, "delimiter", ",")
+          header_list  = lookup(import_table.value.input_format_options.csv, "header_list", null)
+        }
       }
-      input_compression_type = lookup(import_table.value, "input_compression_type", null)
-      input_format           = import_table.value.input_format
-      input_format_options   = lookup(import_table.value, "input_format_options", null)
     }
   }
-
-  tags = merge(
-    var.tags,
-    {
-      Name = var.table_name
-    }
-  )
-
+  
+  tags = merge(local.common_tags, lookup(each.value, "tags", {}), {
+    Name = each.value.name
+    TableKey = each.key
+    BillingMode = each.value.billing_mode
+    StreamEnabled = each.value.stream_enabled
+  })
+  
+  # Lifecycle rules
   lifecycle {
     ignore_changes = [
+      # Ignore changes to these attributes to prevent issues during updates
       read_capacity,
       write_capacity,
     ]
   }
 }
 
-# Auto Scaling for Read Capacity
-resource "aws_appautoscaling_target" "read_target" {
-  count = var.billing_mode == "PROVISIONED" && var.autoscaling_enabled ? 1 : 0
-
-  max_capacity       = var.autoscaling_read.max_capacity
-  min_capacity       = var.autoscaling_read.min_capacity
-  resource_id        = "table/${aws_dynamodb_table.this[0].name}"
+# Auto Scaling for Provisioned Tables
+resource "aws_appautoscaling_target" "read_capacity" {
+  for_each = {
+    for table_key, table in local.tables : table_key => table
+    if table.billing_mode == "PROVISIONED" && lookup(table, "autoscaling", {}) != {}
+  }
+  
+  max_capacity       = lookup(each.value.autoscaling.read_capacity, "max", 100)
+  min_capacity       = lookup(each.value.autoscaling.read_capacity, "min", 5)
+  resource_id        = "table/${aws_dynamodb_table.tables[each.key].name}"
   scalable_dimension = "dynamodb:table:ReadCapacityUnits"
   service_namespace  = "dynamodb"
-
-  depends_on = [aws_dynamodb_table.this]
+  
+  tags = local.common_tags
 }
 
-resource "aws_appautoscaling_policy" "read_policy" {
-  count = var.billing_mode == "PROVISIONED" && var.autoscaling_enabled ? 1 : 0
-
-  name               = "${var.table_name}-read-scaling-policy"
-  policy_type        = "TargetTrackingScaling"
-  resource_id        = aws_appautoscaling_target.read_target[0].resource_id
-  scalable_dimension = aws_appautoscaling_target.read_target[0].scalable_dimension
-  service_namespace  = aws_appautoscaling_target.read_target[0].service_namespace
-
-  target_tracking_scaling_policy_configuration {
-    predefined_metric_specification {
-      predefined_metric_type = "DynamoDBReadCapacityUtilization"
-    }
-    target_value       = var.autoscaling_read.target_value
-    scale_in_cooldown  = var.autoscaling_read.scale_in_cooldown
-    scale_out_cooldown = var.autoscaling_read.scale_out_cooldown
+resource "aws_appautoscaling_target" "write_capacity" {
+  for_each = {
+    for table_key, table in local.tables : table_key => table
+    if table.billing_mode == "PROVISIONED" && lookup(table, "autoscaling", {}) != {}
   }
-}
-
-# Auto Scaling for Write Capacity
-resource "aws_appautoscaling_target" "write_target" {
-  count = var.billing_mode == "PROVISIONED" && var.autoscaling_enabled ? 1 : 0
-
-  max_capacity       = var.autoscaling_write.max_capacity
-  min_capacity       = var.autoscaling_write.min_capacity
-  resource_id        = "table/${aws_dynamodb_table.this[0].name}"
+  
+  max_capacity       = lookup(each.value.autoscaling.write_capacity, "max", 100)
+  min_capacity       = lookup(each.value.autoscaling.write_capacity, "min", 5)
+  resource_id        = "table/${aws_dynamodb_table.tables[each.key].name}"
   scalable_dimension = "dynamodb:table:WriteCapacityUnits"
   service_namespace  = "dynamodb"
-
-  depends_on = [aws_dynamodb_table.this]
+  
+  tags = local.common_tags
 }
 
-resource "aws_appautoscaling_policy" "write_policy" {
-  count = var.billing_mode == "PROVISIONED" && var.autoscaling_enabled ? 1 : 0
-
-  name               = "${var.table_name}-write-scaling-policy"
-  policy_type        = "TargetTrackingScaling"
-  resource_id        = aws_appautoscaling_target.write_target[0].resource_id
-  scalable_dimension = aws_appautoscaling_target.write_target[0].scalable_dimension
-  service_namespace  = aws_appautoscaling_target.write_target[0].service_namespace
-
-  target_tracking_scaling_policy_configuration {
-    predefined_metric_specification {
-      predefined_metric_type = "DynamoDBWriteCapacityUtilization"
-    }
-    target_value       = var.autoscaling_write.target_value
-    scale_in_cooldown  = var.autoscaling_write.scale_in_cooldown
-    scale_out_cooldown = var.autoscaling_write.scale_out_cooldown
+# Auto Scaling Policies
+resource "aws_appautoscaling_policy" "read_capacity_policy" {
+  for_each = {
+    for table_key, table in local.tables : table_key => table
+    if table.billing_mode == "PROVISIONED" && lookup(table, "autoscaling", {}) != {}
   }
-}
-
-# Auto Scaling for GSI Read Capacity
-resource "aws_appautoscaling_target" "gsi_read_target" {
-  for_each = var.billing_mode == "PROVISIONED" && var.autoscaling_enabled ? var.gsi_autoscaling : {}
-
-  max_capacity       = each.value.read.max_capacity
-  min_capacity       = each.value.read.min_capacity
-  resource_id        = "table/${aws_dynamodb_table.this[0].name}/index/${each.key}"
-  scalable_dimension = "dynamodb:index:ReadCapacityUnits"
-  service_namespace  = "dynamodb"
-
-  depends_on = [aws_dynamodb_table.this]
-}
-
-resource "aws_appautoscaling_policy" "gsi_read_policy" {
-  for_each = var.billing_mode == "PROVISIONED" && var.autoscaling_enabled ? var.gsi_autoscaling : {}
-
-  name               = "${var.table_name}-${each.key}-read-scaling-policy"
+  
+  name               = "${each.value.name}-read-capacity-scaling"
   policy_type        = "TargetTrackingScaling"
-  resource_id        = aws_appautoscaling_target.gsi_read_target[each.key].resource_id
-  scalable_dimension = aws_appautoscaling_target.gsi_read_target[each.key].scalable_dimension
-  service_namespace  = aws_appautoscaling_target.gsi_read_target[each.key].service_namespace
-
+  resource_id        = aws_appautoscaling_target.read_capacity[each.key].resource_id
+  scalable_dimension = aws_appautoscaling_target.read_capacity[each.key].scalable_dimension
+  service_namespace  = aws_appautoscaling_target.read_capacity[each.key].service_namespace
+  
   target_tracking_scaling_policy_configuration {
     predefined_metric_specification {
       predefined_metric_type = "DynamoDBReadCapacityUtilization"
     }
-    target_value       = each.value.read.target_value
-    scale_in_cooldown  = each.value.read.scale_in_cooldown
-    scale_out_cooldown = each.value.read.scale_out_cooldown
+    
+    target_value       = lookup(each.value.autoscaling.read_capacity, "target_utilization", 70.0)
+    scale_in_cooldown  = lookup(each.value.autoscaling.read_capacity, "scale_in_cooldown", 60)
+    scale_out_cooldown = lookup(each.value.autoscaling.read_capacity, "scale_out_cooldown", 60)
   }
 }
 
-# Auto Scaling for GSI Write Capacity
-resource "aws_appautoscaling_target" "gsi_write_target" {
-  for_each = var.billing_mode == "PROVISIONED" && var.autoscaling_enabled ? var.gsi_autoscaling : {}
-
-  max_capacity       = each.value.write.max_capacity
-  min_capacity       = each.value.write.min_capacity
-  resource_id        = "table/${aws_dynamodb_table.this[0].name}/index/${each.key}"
-  scalable_dimension = "dynamodb:index:WriteCapacityUnits"
-  service_namespace  = "dynamodb"
-
-  depends_on = [aws_dynamodb_table.this]
-}
-
-resource "aws_appautoscaling_policy" "gsi_write_policy" {
-  for_each = var.billing_mode == "PROVISIONED" && var.autoscaling_enabled ? var.gsi_autoscaling : {}
-
-  name               = "${var.table_name}-${each.key}-write-scaling-policy"
+resource "aws_appautoscaling_policy" "write_capacity_policy" {
+  for_each = {
+    for table_key, table in local.tables : table_key => table
+    if table.billing_mode == "PROVISIONED" && lookup(table, "autoscaling", {}) != {}
+  }
+  
+  name               = "${each.value.name}-write-capacity-scaling"
   policy_type        = "TargetTrackingScaling"
-  resource_id        = aws_appautoscaling_target.gsi_write_target[each.key].resource_id
-  scalable_dimension = aws_appautoscaling_target.gsi_write_target[each.key].scalable_dimension
-  service_namespace  = aws_appautoscaling_target.gsi_write_target[each.key].service_namespace
-
+  resource_id        = aws_appautoscaling_target.write_capacity[each.key].resource_id
+  scalable_dimension = aws_appautoscaling_target.write_capacity[each.key].scalable_dimension
+  service_namespace  = aws_appautoscaling_target.write_capacity[each.key].service_namespace
+  
   target_tracking_scaling_policy_configuration {
     predefined_metric_specification {
       predefined_metric_type = "DynamoDBWriteCapacityUtilization"
     }
-    target_value       = each.value.write.target_value
-    scale_in_cooldown  = each.value.write.scale_in_cooldown
-    scale_out_cooldown = each.value.write.scale_out_cooldown
+    
+    target_value       = lookup(each.value.autoscaling.write_capacity, "target_utilization", 70.0)
+    scale_in_cooldown  = lookup(each.value.autoscaling.write_capacity, "scale_in_cooldown", 60)
+    scale_out_cooldown = lookup(each.value.autoscaling.write_capacity, "scale_out_cooldown", 60)
   }
 }
 
-# CloudWatch Contributor Insights
-resource "aws_dynamodb_contributor_insights" "this" {
-  count      = var.enable_contributor_insights ? 1 : 0
-  table_name = aws_dynamodb_table.this[0].name
-
-  depends_on = [aws_dynamodb_table.this]
-}
-
-resource "aws_dynamodb_contributor_insights" "gsi" {
-  for_each = var.enable_contributor_insights ? toset([for gsi in var.global_secondary_indexes : gsi.name]) : []
-
-  table_name = aws_dynamodb_table.this[0].name
-  index_name = each.value
-
-  depends_on = [aws_dynamodb_table.this]
-}
-
-# Kinesis Data Firehose for DynamoDB Streams (if enabled)
-resource "aws_kinesis_firehose_delivery_stream" "dynamodb_stream" {
-  count       = var.stream_enabled && var.enable_kinesis_firehose ? 1 : 0
-  name        = "${var.table_name}-stream-firehose"
-  destination = "extended_s3"
-
-  extended_s3_configuration {
-    role_arn   = var.kinesis_firehose_role_arn
-    bucket_arn = var.kinesis_firehose_s3_bucket_arn
-
-    prefix              = "dynamodb-streams/year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/hour=!{timestamp:HH}/"
-    error_output_prefix = "errors/"
-    buffer_size         = 5
-    buffer_interval     = 300
-    compression_format  = "GZIP"
-
-    dynamic_partitioning {
-      enabled = true
+# Global Tables (DynamoDB Global Tables V2)
+resource "aws_dynamodb_table" "global_tables" {
+  for_each = local.global_tables
+  
+  name         = each.value.name
+  billing_mode = "PAY_PER_REQUEST"  # Global tables must use PAY_PER_REQUEST
+  hash_key     = each.value.hash_key
+  range_key    = lookup(each.value, "range_key", null)
+  
+  # Stream is required for global tables
+  stream_enabled   = true
+  stream_view_type = "NEW_AND_OLD_IMAGES"
+  
+  # Attributes
+  dynamic "attribute" {
+    for_each = each.value.attributes
+    content {
+      name = attribute.value.name
+      type = attribute.value.type
     }
-
-    processing_configuration {
-      enabled = true
-
-      processors {
-        type = "Lambda"
-
-        parameters {
-          parameter_name  = "LambdaArn"
-          parameter_value = var.kinesis_firehose_lambda_arn
+  }
+  
+  # Global Secondary Indexes
+  dynamic "global_secondary_index" {
+    for_each = lookup(each.value, "global_secondary_indexes", [])
+    content {
+      name               = global_secondary_index.value.name
+      hash_key           = global_secondary_index.value.hash_key
+      range_key          = lookup(global_secondary_index.value, "range_key", null)
+      projection_type    = global_secondary_index.value.projection_type
+      non_key_attributes = lookup(global_secondary_index.value, "non_key_attributes", null)
+    }
+  }
+  
+  # TTL configuration
+  dynamic "ttl" {
+    for_each = lookup(each.value, "ttl", null) != null ? [each.value.ttl] : []
+    content {
+      attribute_name = ttl.value.attribute_name
+      enabled        = lookup(ttl.value, "enabled", true)
+    }
+  }
+  
+  # Point-in-time recovery
+  point_in_time_recovery {
+    enabled = true
+  }
+  
+  # Server-side encryption
+  server_side_encryption {
+    enabled    = true
+    kms_key_id = lookup(each.value, "kms_key_id", null)
+  }
+  
+  # Replicas
+  dynamic "replica" {
+    for_each = each.value.replicas
+    content {
+      region_name = replica.value.region_name
+      
+      # Point-in-time recovery for replica
+      point_in_time_recovery = replica.value.point_in_time_recovery_enabled
+      
+      # Table class for replica
+      table_class = replica.value.table_class
+      
+      # KMS encryption for replica
+      kms_key_id = lookup(replica.value, "kms_key_id", null)
+      
+      # Global secondary indexes for replica
+      dynamic "global_secondary_index" {
+        for_each = replica.value.global_secondary_indexes
+        content {
+          name               = global_secondary_index.value.name
+          projection_type    = global_secondary_index.value.projection_type
+          non_key_attributes = lookup(global_secondary_index.value, "non_key_attributes", null)
         }
       }
+      
+      # Tags for replica
+      tags = merge(local.common_tags, lookup(replica.value, "tags", {}), {
+        ReplicaRegion = replica.value.region_name
+      })
     }
+  }
+  
+  tags = merge(local.common_tags, lookup(each.value, "tags", {}), {
+    Name = each.value.name
+    GlobalTable = "true"
+    Replicas = join(",", [for r in each.value.replicas : r.region_name])
+  })
+}
 
-    data_format_conversion_configuration {
-      enabled = true
+# DynamoDB Backup Vault (for continuous backups)
+resource "aws_dynamodb_backup_vault" "backup_vault" {
+  count = var.enable_backup_vault ? 1 : 0
+  
+  name         = "${var.name_prefix}-dynamodb-backup-vault"
+  kms_key_arn  = var.backup_vault_kms_key_arn
+  
+  tags = merge(local.common_tags, {
+    Name = "${var.name_prefix}-dynamodb-backup-vault"
+    Purpose = "DynamoDB Backups"
+  })
+}
 
-      output_format_configuration {
-        serializer {
-          parquet_ser_de {}
+# Backup plans for DynamoDB tables
+resource "aws_backup_plan" "dynamodb_backup" {
+  count = var.enable_backup_vault && length(var.backup_plan_rules) > 0 ? 1 : 0
+  
+  name = "${var.name_prefix}-dynamodb-backup-plan"
+  
+  dynamic "rule" {
+    for_each = var.backup_plan_rules
+    content {
+      rule_name                = rule.value.rule_name
+      target_vault_name        = aws_dynamodb_backup_vault.backup_vault[0].name
+      schedule                 = rule.value.schedule
+      start_window            = lookup(rule.value, "start_window", null)
+      completion_window       = lookup(rule.value, "completion_window", null)
+      enable_continuous_backup = lookup(rule.value, "enable_continuous_backup", false)
+      
+      dynamic "lifecycle" {
+        for_each = lookup(rule.value, "lifecycle", null) != null ? [rule.value.lifecycle] : []
+        content {
+          cold_storage_after = lookup(lifecycle.value, "cold_storage_after", null)
+          delete_after      = lookup(lifecycle.value, "delete_after", null)
         }
       }
-
-      schema_configuration {
-        database_name = var.kinesis_firehose_glue_database
-        table_name    = var.kinesis_firehose_glue_table
-        role_arn      = var.kinesis_firehose_role_arn
+      
+      dynamic "recovery_point_tags" {
+        for_each = lookup(rule.value, "recovery_point_tags", {})
+        content {
+          key   = recovery_point_tags.key
+          value = recovery_point_tags.value
+        }
       }
     }
   }
-
-  tags = var.tags
+  
+  tags = merge(local.common_tags, {
+    Name = "${var.name_prefix}-dynamodb-backup-plan"
+    Service = "DynamoDB"
+  })
 }
 
-# CloudWatch Alarms
+# IAM role for backup service
+resource "aws_iam_role" "backup_service_role" {
+  count = var.enable_backup_vault ? 1 : 0
+  
+  name = "${var.name_prefix}-dynamodb-backup-service-role"
+  
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "backup.amazonaws.com"
+        }
+      }
+    ]
+  })
+  
+  tags = local.common_tags
+}
+
+# Attach AWS managed policy for DynamoDB backup
+resource "aws_iam_role_policy_attachment" "backup_service_policy" {
+  count = var.enable_backup_vault ? 1 : 0
+  
+  role       = aws_iam_role.backup_service_role[0].name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForBackup"
+}
+
+# Backup selection for DynamoDB tables
+resource "aws_backup_selection" "dynamodb_backup_selection" {
+  count = var.enable_backup_vault && length(var.backup_plan_rules) > 0 ? 1 : 0
+  
+  iam_role_arn = aws_iam_role.backup_service_role[0].arn
+  name         = "${var.name_prefix}-dynamodb-backup-selection"
+  plan_id      = aws_backup_plan.dynamodb_backup[0].id
+  
+  # Include all DynamoDB tables created by this module
+  dynamic "resources" {
+    for_each = aws_dynamodb_table.tables
+    content {
+      arn = resources.value.arn
+    }
+  }
+  
+  # Include global tables as well
+  dynamic "resources" {
+    for_each = aws_dynamodb_table.global_tables
+    content {
+      arn = resources.value.arn
+    }
+  }
+  
+  # Condition to include tables with specific tags
+  dynamic "condition" {
+    for_each = var.backup_selection_conditions
+    content {
+      string_equals = condition.value.string_equals
+      string_like   = condition.value.string_like
+      string_not_equals = condition.value.string_not_equals
+      string_not_like   = condition.value.string_not_like
+    }
+  }
+}
+
+# CloudWatch alarms for DynamoDB monitoring
 resource "aws_cloudwatch_metric_alarm" "read_throttled_requests" {
-  count = var.enable_cloudwatch_alarms ? 1 : 0
-
-  alarm_name          = "${var.table_name}-read-throttled-requests"
+  for_each = var.enable_cloudwatch_alarms ? local.tables : {}
+  
+  alarm_name          = "${each.value.name}-read-throttled-requests"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = "2"
   metric_name         = "ReadThrottledRequests"
   namespace           = "AWS/DynamoDB"
-  period              = "60"
+  period              = "300"
   statistic           = "Sum"
-  threshold           = var.read_throttled_requests_threshold
+  threshold           = "0"
   alarm_description   = "This metric monitors DynamoDB read throttled requests"
-  alarm_actions       = var.cloudwatch_alarm_actions
-
+  alarm_actions       = var.alarm_actions
+  ok_actions          = var.ok_actions
+  
   dimensions = {
-    TableName = aws_dynamodb_table.this[0].name
+    TableName = aws_dynamodb_table.tables[each.key].name
   }
-
-  tags = var.tags
+  
+  tags = local.common_tags
 }
 
 resource "aws_cloudwatch_metric_alarm" "write_throttled_requests" {
-  count = var.enable_cloudwatch_alarms ? 1 : 0
-
-  alarm_name          = "${var.table_name}-write-throttled-requests"
+  for_each = var.enable_cloudwatch_alarms ? local.tables : {}
+  
+  alarm_name          = "${each.value.name}-write-throttled-requests"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = "2"
   metric_name         = "WriteThrottledRequests"
   namespace           = "AWS/DynamoDB"
-  period              = "60"
+  period              = "300"
   statistic           = "Sum"
-  threshold           = var.write_throttled_requests_threshold
+  threshold           = "0"
   alarm_description   = "This metric monitors DynamoDB write throttled requests"
-  alarm_actions       = var.cloudwatch_alarm_actions
-
+  alarm_actions       = var.alarm_actions
+  ok_actions          = var.ok_actions
+  
   dimensions = {
-    TableName = aws_dynamodb_table.this[0].name
+    TableName = aws_dynamodb_table.tables[each.key].name
   }
-
-  tags = var.tags
+  
+  tags = local.common_tags
 }
 
-resource "aws_cloudwatch_metric_alarm" "consumed_read_capacity" {
-  count = var.billing_mode == "PROVISIONED" && var.enable_cloudwatch_alarms ? 1 : 0
-
-  alarm_name          = "${var.table_name}-consumed-read-capacity-high"
+resource "aws_cloudwatch_metric_alarm" "system_errors" {
+  for_each = var.enable_cloudwatch_alarms ? local.tables : {}
+  
+  alarm_name          = "${each.value.name}-system-errors"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = "2"
-  metric_name         = "ConsumedReadCapacityUnits"
+  metric_name         = "SystemErrors"
   namespace           = "AWS/DynamoDB"
-  period              = "60"
+  period              = "300"
   statistic           = "Sum"
-  threshold           = var.consumed_read_capacity_threshold
-  alarm_description   = "This metric monitors DynamoDB consumed read capacity"
-  alarm_actions       = var.cloudwatch_alarm_actions
-
+  threshold           = "0"
+  alarm_description   = "This metric monitors DynamoDB system errors"
+  alarm_actions       = var.alarm_actions
+  ok_actions          = var.ok_actions
+  
   dimensions = {
-    TableName = aws_dynamodb_table.this[0].name
+    TableName = aws_dynamodb_table.tables[each.key].name
   }
-
-  tags = var.tags
+  
+  tags = local.common_tags
 }
 
-resource "aws_cloudwatch_metric_alarm" "consumed_write_capacity" {
-  count = var.billing_mode == "PROVISIONED" && var.enable_cloudwatch_alarms ? 1 : 0
-
-  alarm_name          = "${var.table_name}-consumed-write-capacity-high"
-  comparison_operator = "GreaterThanThreshold"
-  evaluation_periods  = "2"
-  metric_name         = "ConsumedWriteCapacityUnits"
-  namespace           = "AWS/DynamoDB"
-  period              = "60"
-  statistic           = "Sum"
-  threshold           = var.consumed_write_capacity_threshold
-  alarm_description   = "This metric monitors DynamoDB consumed write capacity"
-  alarm_actions       = var.cloudwatch_alarm_actions
-
-  dimensions = {
-    TableName = aws_dynamodb_table.this[0].name
-  }
-
-  tags = var.tags
+# DynamoDB Contributor Insights
+resource "aws_dynamodb_contributor_insights" "table_insights" {
+  for_each = var.enable_contributor_insights ? local.tables : {}
+  
+  table_name = aws_dynamodb_table.tables[each.key].name
+  
+  tags = merge(local.common_tags, {
+    TableName = aws_dynamodb_table.tables[each.key].name
+    Service = "DynamoDB"
+  })
 }
+
+# Lambda function for DynamoDB Stream processing (optional)
+data "aws_iam_policy_document" "stream_processor_assume_role" {
+  count = length(var.stream_processor_functions) > 0 ? 1 : 0
+  
+  statement {
+    effect = "Allow"
+    
+    principals {
+      type        = "Service"
+      identifiers = ["lambda.amazonaws.com"]
+    }
+    
+    actions = ["sts:AssumeRole"]
+  }
+}
+
+resource "aws_iam_role" "stream_processor_role" {
+  count = length(var.stream_processor_functions) > 0 ? 1 : 0
+  
+  name               = "${var.name_prefix}-dynamodb-stream-processor-role"
+  assume_role_policy = data.aws_iam_policy_document.stream_processor_assume_role[0].json
+  
+  tags = local.common_tags
+}
+
+# IAM policy for DynamoDB Stream processing
+data "aws_iam_policy_document" "stream_processor_policy" {
+  count = length(var.stream_processor_functions) > 0 ? 1 : 0
+  
+  statement {
+    effect = "Allow"
+    
+    actions = [
+      "dynamodb:DescribeStream",
+      "dynamodb:GetRecords",
+      "dynamodb:GetShardIterator",
+      "dynamodb:ListStreams"
+    ]
+    
+    resources = [
+      for table_key, table in local.tables : "${aws_dynamodb_table.tables[table_key].arn}/stream/*"
+      if table.stream_enabled
+    ]
+  }
+  
+  statement {
+    effect = "Allow"
+    
+    actions = [
+      "logs:CreateLogGroup",
+      "logs:CreateLogStream",
+      "logs:PutLogEvents"
+    ]
+    
+    resources = ["arn:aws:logs:*:*:*"]
+  }
+}
+
+resource "aws_iam_policy" "stream_processor_policy" {
+  count = length(var.stream_processor_functions) > 0 ? 1 : 0
+  
+  name        = "${var.name_prefix}-dynamodb-stream-processor-policy"
+  description = "IAM policy for DynamoDB stream processing Lambda function"
+  policy      = data.aws_iam_policy_document.stream_processor_policy[0].json
+  
+  tags = local.common_tags
+}
+
+resource "aws_iam_role_policy_attachment" "stream_processor_policy_attachment" {
+  count = length(var.stream_processor_functions) > 0 ? 1 : 0
+  
+  role       = aws_iam_role.stream_processor_role[0].name
+  policy_arn = aws_iam_policy.stream_processor_policy[0].arn
+}
+
+# Event source mappings for DynamoDB Streams
+resource "aws_lambda_event_source_mapping" "dynamodb_stream_mapping" {
+  for_each = var.stream_processor_functions
+  
+  event_source_arn                   = aws_dynamodb_table.tables[each.value.table_key].stream_arn
+  function_name                      = each.value.lambda_function_name
+  starting_position                  = lookup(each.value, "starting_position", "LATEST")
+  batch_size                        = lookup(each.value, "batch_size", 10)
+  maximum_batching_window_in_seconds = lookup(each.value, "maximum_batching_window_in_seconds", null)
+  parallelization_factor            = lookup(each.value, "parallelization_factor", null)
+  maximum_record_age_in_seconds     = lookup(each.value, "maximum_record_age_in_seconds", null)
+  bisect_batch_on_function_error    = lookup(each.value, "bisect_batch_on_function_error", false)
+  maximum_retry_attempts            = lookup(each.value, "maximum_retry_attempts", null)
+  tumbling_window_in_seconds        = lookup(each.value, "tumbling_window_in_seconds", null)
+  
+  # Destination configuration for failed records
+  dynamic "destination_config" {
+    for_each = lookup(each.value, "destination_config", null) != null ? [each.value.destination_config] : []
+    content {
+      dynamic "on_failure" {
+        for_each = lookup(destination_config.value, "on_failure", null) != null ? [destination_config.value.on_failure] : []
+        content {
+          destination_arn = on_failure.value.destination_arn
+        }
+      }
+    }
+  }
+  
+  # Filter criteria
+  dynamic "filter_criteria" {
+    for_each = lookup(each.value, "filter_criteria", null) != null ? [each.value.filter_criteria] : []
+    content {
+      dynamic "filter" {
+        for_each = filter_criteria.value.filters
+        content {
+          pattern = filter.value.pattern
+        }
+      }
+    }
+  }
+  
+  depends_on = [
+    aws_iam_role_policy_attachment.stream_processor_policy_attachment
+  ]
+}
+
+# Data source for current AWS partition and region
+data "aws_partition" "current" {}
+data "aws_region" "current" {}
+data "aws_caller_identity" "current" {}

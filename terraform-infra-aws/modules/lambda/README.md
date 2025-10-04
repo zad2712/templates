@@ -1,967 +1,871 @@
-# Lambda Terraform Module
+# AWS Lambda Terraform Module
 
-## Overview
-
-This Terraform module creates **AWS Lambda functions** with enterprise-grade features including event triggers, environment management, monitoring, security controls, and cost optimization. The module supports multiple runtimes, deployment methods, and integration patterns for serverless applications.
+A comprehensive Terraform module for creating and managing AWS Lambda functions with advanced features, security best practices, and full integration capabilities.
 
 ## Features
 
-### 🚀 **Serverless Computing**
-- **Multiple Runtimes**: Python, Node.js, Java, Go, .NET, Ruby, and custom runtimes
-- **Event-Driven Architecture**: Trigger functions from various AWS services
-- **Auto Scaling**: Automatic scaling based on incoming requests
-- **Pay-per-Use**: Cost-effective execution model with millisecond billing
-- **Cold Start Optimization**: Provisioned concurrency for consistent performance
+### 🚀 Core Lambda Capabilities
+- **Multiple Package Types**: Support for both Zip and Container image deployments
+- **Runtime Flexibility**: All AWS Lambda runtimes including Python, Node.js, Java, Go, .NET, Ruby
+- **Architecture Support**: x86_64 and ARM64 (Graviton2) architectures for cost optimization
+- **Layer Management**: Create and manage Lambda layers for code reuse
+- **Version Control**: Function versioning and alias management
+- **Concurrency Control**: Reserved and provisioned concurrency configuration
 
-### 🔗 **Event Sources & Triggers**
-- **API Gateway**: RESTful and WebSocket API integration
+### 🔒 Security & Compliance
+- **IAM Integration**: Automatic IAM role creation with least privilege principles
+- **VPC Integration**: Secure networking with custom VPC, subnets, and security groups
+- **Encryption**: KMS encryption for environment variables and CloudWatch logs
+- **Code Signing**: Support for AWS Signer code signing configurations
+- **Dead Letter Queues**: Error handling with DLQ integration
+- **X-Ray Tracing**: Distributed tracing for performance monitoring
 
-- **S3 Events**: Object creation, deletion, and modification triggers
-- **DynamoDB Streams**: Real-time data processing
-- **Kinesis**: Stream processing and analytics
-- **SQS**: Queue-based message processing
-- **EventBridge**: Event-driven architectures
-- **CloudWatch Events**: Scheduled and reactive triggers
+### 📊 Monitoring & Observability
+- **CloudWatch Integration**: Automatic log group creation with configurable retention
+- **Structured Logging**: JSON and text log format support
+- **Performance Metrics**: Memory, timeout, and execution monitoring
+- **Custom Log Levels**: Application and system log level configuration
+- **Health Monitoring**: Function health and performance tracking
 
-### 🔒 **Security & Access Control**
-- **IAM Integration**: Fine-grained permissions and execution roles
-- **VPC Integration**: Private network access and security groups
-- **Environment Variables**: Secure configuration management
-- **Secrets Manager**: Automatic secret injection and rotation
-- **Layer Security**: Shared code and dependencies management
-- **Function URL**: HTTPS endpoints with authentication controls
+### 🔗 Integration & Event Processing
+- **Event Source Mappings**: Kinesis, DynamoDB, SQS, MSK integration
+- **Function URLs**: HTTP(S) endpoints with CORS support
+- **API Gateway Ready**: Optimized for API Gateway integration
+- **EventBridge Integration**: Event-driven architecture support
+- **File System Support**: EFS integration for shared storage
 
-### 📊 **Monitoring & Observability**
-- **CloudWatch Logs**: Automatic logging and log retention
-- **CloudWatch Metrics**: Performance and error monitoring
-- **X-Ray Tracing**: Distributed tracing and performance analysis
-- **Dead Letter Queues**: Error handling and retry mechanisms
-- **CloudWatch Insights**: Advanced log analysis and queries
-
-### 💰 **Cost Optimization**
-- **Right-Sizing**: Memory and timeout optimization
-- **Provisioned Concurrency**: Predictable performance with cost control
-- **Reserved Concurrency**: Cost management and resource allocation
-- **Lifecycle Management**: Automated cleanup and version management
-
-## Architecture
-
-### 🏗️ **Lambda Architecture Patterns**
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    Event-Driven Architecture                    │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐        │
-│  │ API Gateway │    │             │    │ CloudWatch  │        │
-│  │   Events    │    │  Target     │    │   Events    │        │
-│  └──────┬──────┘    └──────┬──────┘    └──────┬──────┘        │
-│         │                  │                  │               │
-│         │                  │                  │               │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐        │
-│  │     S3      │    │ DynamoDB    │    │   Kinesis   │        │
-│  │   Events    │    │  Streams    │    │   Streams   │        │
-│  └──────┬──────┘    └──────┬──────┘    └──────┬──────┘        │
-│         │                  │                  │               │
-│         └──────────────────┼──────────────────┘               │
-│                            │                                  │
-│  ┌─────────────────────────▼─────────────────────────┐       │
-│  │                Lambda Function                    │       │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐│      │
-│  │  │   Runtime   │  │ Environment │  │    Layers   ││      │
-│  │  │   Handler   │  │ Variables   │  │Dependencies ││      │
-│  │  └─────────────┘  └─────────────┘  └─────────────┘│      │
-│  │                                                   │       │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐│      │
-│  │  │ IAM Role    │  │ VPC Config  │  │ Monitoring  ││      │
-│  │  │Permissions  │  │   Access    │  │   & Logs    ││      │
-│  │  └─────────────┘  └─────────────┘  └─────────────┘│      │
-│  └───────────────────────────────────────────────────┘       │
-│                            │                                  │
-│         ┌──────────────────┼──────────────────┐               │
-│         │                  │                  │               │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐        │
-│  │   DynamoDB  │    │     S3      │    │     RDS     │        │
-│  │   Tables    │    │   Buckets   │    │ Databases   │        │
-│  └─────────────┘    └─────────────┘    └─────────────┘        │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### 📋 **Function Lifecycle**
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    Lambda Function Lifecycle                    │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  1. Event Trigger                                              │
-│     └─► API Request / S3 Event / DynamoDB Stream               │
-│                                                                 │
-│  2. Runtime Initialization (Cold Start)                        │
-│     ├─► Download Function Package                              │
-│     ├─► Initialize Runtime Environment                         │
-│     ├─► Load Dependencies and Layers                          │
-│     └─► Execute Initialization Code                           │
-│                                                                 │
-│  3. Handler Execution                                          │
-│     ├─► Process Event Data                                     │
-│     ├─► Execute Business Logic                                 │
-│     ├─► Access External Resources                             │
-│     └─► Return Response                                        │
-│                                                                 │
-│  4. Runtime Reuse (Warm Start)                                │
-│     └─► Skip Initialization, Direct to Handler               │
-│                                                                 │
-│  5. Monitoring & Logging                                       │
-│     ├─► CloudWatch Logs                                       │
-│     ├─► CloudWatch Metrics                                    │
-│     ├─► X-Ray Tracing                                         │
-│     └─► Error Handling                                        │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-```
+### ⚡ Performance & Optimization
+- **Memory Optimization**: Configurable memory from 128MB to 10GB
+- **Ephemeral Storage**: Up to 10GB of temporary storage
+- **Snap Start**: Java performance optimization
+- **ARM64 Support**: Cost-effective Graviton2 processors
+- **Provisioned Concurrency**: Reduced cold start latency
 
 ## Usage Examples
 
-### Basic Python Lambda Function
+### Basic Function
 
 ```hcl
-module "python_lambda" {
-  source = "../../modules/lambda"
+module "lambda_basic" {
+  source = "./modules/lambda"
 
-  # Basic configuration
-  function_name = "my-python-function"
-  runtime       = "python3.11"
-  handler       = "lambda_function.lambda_handler"
-
-  # Deployment package
-  filename         = "function.zip"
-  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
-
-  # Function configuration
-  timeout     = 30
-  memory_size = 256
-
-  # Environment variables
-  environment = {
-    variables = {
-      ENVIRONMENT = "development"
-      LOG_LEVEL   = "INFO"
+  name_prefix = "my-app"
+  
+  lambda_functions = {
+    hello_world = {
+      runtime = "python3.11"
+      handler = "lambda_function.lambda_handler"
+      filename = "hello_world.zip"
+      description = "Basic Hello World function"
+      timeout = 30
+      memory_size = 128
+      
+      environment_variables = {
+        LOG_LEVEL = "INFO"
+        STAGE = "dev"
+      }
+      
+      tags = {
+        Function = "HelloWorld"
+        Purpose = "Demo"
+      }
     }
   }
-
-  # IAM permissions
-  execution_role_arn = module.iam.lambda_execution_role_arn
-
-  tags = {
+  
+  common_tags = {
     Environment = "development"
-    Project     = "my-app"
+    Project = "lambda-demo"
   }
-}
-
-# Package Lambda function code
-data "archive_file" "lambda_zip" {
-  type        = "zip"
-  source_dir  = "${path.module}/src"
-  output_path = "${path.module}/function.zip"
 }
 ```
 
-### API Gateway Integration
+### Advanced Function with VPC and Monitoring
 
 ```hcl
-module "api_lambda" {
-  source = "../../modules/lambda"
+module "lambda_advanced" {
+  source = "./modules/lambda"
 
-  function_name = "api-handler"
-  runtime       = "nodejs18.x"
-  handler       = "index.handler"
+  name_prefix = "enterprise-app"
   
-  # Optimized for API responses
-  timeout     = 10
-  memory_size = 512
-
-  # Source code from S3
-  s3_bucket = aws_s3_bucket.lambda_deployments.bucket
-  s3_key    = "api-handler-v1.0.0.zip"
-
-  # Environment configuration
-  environment = {
-    variables = {
-      NODE_ENV    = "production"
-      API_VERSION = "v1"
-      CORS_ORIGIN = "https://myapp.com"
+  lambda_functions = {
+    data_processor = {
+      runtime = "python3.11"
+      handler = "app.handler"
+      filename = "data_processor.zip"
+      description = "Data processing function with VPC and monitoring"
+      timeout = 300
+      memory_size = 1024
+      reserved_concurrent_executions = 50
+      
+      # VPC Configuration
+      vpc_config = {
+        subnet_ids = [
+          "subnet-12345678",
+          "subnet-87654321"
+        ]
+        security_group_ids = [
+          "sg-12345678"
+        ]
+      }
+      
+      # Environment Variables with Encryption
+      environment_variables = {
+        DATABASE_URL = "postgresql://..."
+        API_KEY = "encrypted_key"
+        REDIS_URL = "redis://..."
+      }
+      kms_key_arn = "arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012"
+      
+      # Dead Letter Queue
+      dead_letter_config = {
+        target_arn = "arn:aws:sqs:us-east-1:123456789012:dlq"
+      }
+      
+      # X-Ray Tracing
+      tracing_mode = "Active"
+      
+      # Enhanced Logging
+      logging_config = {
+        log_format = "JSON"
+        application_log_level = "INFO"
+        system_log_level = "WARN"
+      }
+      
+      # Custom IAM Policy
+      custom_iam_policy = jsonencode({
+        Version = "2012-10-17"
+        Statement = [
+          {
+            Effect = "Allow"
+            Action = [
+              "rds-db:connect",
+              "secretsmanager:GetSecretValue"
+            ]
+            Resource = "*"
+          }
+        ]
+      })
+      
+      tags = {
+        Function = "DataProcessor"
+        Tier = "Backend"
+        CriticalityLevel = "High"
+      }
     }
   }
-
-  # VPC configuration for database access
-  vpc_config = {
-    subnet_ids         = module.vpc.private_subnets
-    security_group_ids = [module.security_groups.lambda_sg_id]
-  }
-
-  # Enable X-Ray tracing
-  tracing_config = {
-    mode = "Active"
-  }
-
-  # Dead letter queue for error handling
-  dead_letter_config = {
-    target_arn = aws_sqs_queue.dlq.arn
-  }
-
-  execution_role_arn = module.iam.api_lambda_role_arn
-
-  tags = {
+  
+  # Global Configuration
+  log_retention_days = 30
+  log_kms_key_id = "arn:aws:kms:us-east-1:123456789012:key/log-key-id"
+  
+  common_tags = {
     Environment = "production"
-    Service     = "api"
+    Project = "enterprise-app"
+    ManagedBy = "terraform"
   }
 }
+```
 
-# API Gateway integration
-resource "aws_api_gateway_integration" "lambda_proxy" {
+### Container-Based Function
+
+```hcl
+module "lambda_container" {
+  source = "./modules/lambda"
+
+  name_prefix = "ml-pipeline"
+  
+  lambda_functions = {
+    ml_inference = {
+      package_type = "Image"
+      image_uri = "123456789012.dkr.ecr.us-east-1.amazonaws.com/ml-inference:latest"
+      description = "ML inference using container image"
+      timeout = 900
+      memory_size = 3008
+      architectures = ["x86_64"]
+      
+      # Image Configuration
+      image_config = {
+        entry_point = ["/lambda-entrypoint.sh"]
+        command = ["app.handler"]
+        working_directory = "/var/task"
+      }
+      
+      # Ephemeral Storage for Model Files
+      ephemeral_storage_size = 2048
+      
+      # Environment Variables
+      environment_variables = {
+        MODEL_PATH = "/tmp/models"
+        BATCH_SIZE = "32"
+        GPU_ENABLED = "false"
+      }
+      
+      # Provisioned Concurrency for Low Latency
+      provisioned_concurrency_config = {
+        provisioned_concurrent_executions = 5
+        qualifier = "$LATEST"
+      }
+      
+      tags = {
+        Function = "MLInference"
+        ModelType = "Classification"
+        GPU = "false"
+      }
+    }
+  }
+}
+```
+
+### Event-Driven Function with Multiple Integrations
+
+```hcl
+module "lambda_event_driven" {
+  source = "./modules/lambda"
+
+  name_prefix = "event-processor"
+  
+  lambda_functions = {
+    stream_processor = {
+      runtime = "python3.11"
+      handler = "stream_handler.process"
+      filename = "stream_processor.zip"
+      timeout = 300
+      memory_size = 512
+      
+      # Event Source Mappings
+      event_source_mappings = {
+        kinesis_stream = {
+          event_source_arn = "arn:aws:kinesis:us-east-1:123456789012:stream/events"
+          starting_position = "LATEST"
+          batch_size = 100
+          maximum_batching_window_in_seconds = 5
+          parallelization_factor = 2
+          
+          # Error Handling
+          maximum_record_age_in_seconds = 3600
+          bisect_batch_on_function_error = true
+          maximum_retry_attempts = 3
+          
+          # Destination Configuration
+          destination_config = {
+            on_failure = {
+              destination_arn = "arn:aws:sqs:us-east-1:123456789012:failed-events"
+            }
+          }
+          
+          # Filtering
+          filter_criteria = {
+            filters = [
+              {
+                pattern = jsonencode({
+                  eventType = ["ORDER_CREATED", "ORDER_UPDATED"]
+                })
+              }
+            ]
+          }
+        }
+        
+        sqs_queue = {
+          event_source_arn = "arn:aws:sqs:us-east-1:123456789012:processing-queue"
+          batch_size = 10
+          maximum_batching_window_in_seconds = 2
+        }
+      }
+      
+      # Function URL for HTTP Access
+      function_url_config = {
+        authorization_type = "AWS_IAM"
+        cors = {
+          allow_credentials = true
+          allow_headers = ["date", "keep-alive"]
+          allow_methods = ["POST", "GET"]
+          allow_origins = ["https://myapp.com"]
+          expose_headers = ["date", "keep-alive"]
+          max_age = 86400
+        }
+      }
+      
+      # Permissions for External Services
+      permissions = {
+        api_gateway = {
+          statement_id = "AllowExecutionFromAPIGateway"
+          action = "lambda:InvokeFunction"
+          principal = "apigateway.amazonaws.com"
+          source_arn = "arn:aws:execute-api:us-east-1:123456789012:api-id/*/*/*"
+        }
+        
+        eventbridge = {
+          statement_id = "AllowExecutionFromEventBridge"
+          action = "lambda:InvokeFunction"
+          principal = "events.amazonaws.com"
+          source_arn = "arn:aws:events:us-east-1:123456789012:rule/my-rule"
+        }
+      }
+      
+      tags = {
+        Function = "StreamProcessor"
+        Purpose = "EventProcessing"
+        IntegrationType = "Multi"
+      }
+    }
+  }
+}
+```
+
+### Lambda Layers
+
+```hcl
+module "lambda_with_layers" {
+  source = "./modules/lambda"
+
+  name_prefix = "layered-app"
+  
+  # Define Layers
+  lambda_layers = {
+    common_utils = {
+      filename = "common_utils_layer.zip"
+      description = "Common utility functions and libraries"
+      compatible_runtimes = ["python3.9", "python3.10", "python3.11"]
+      compatible_architectures = ["x86_64", "arm64"]
+      license_info = "MIT"
+    }
+    
+    ml_libraries = {
+      filename = "ml_libraries_layer.zip"
+      description = "Machine learning libraries (numpy, pandas, sklearn)"
+      compatible_runtimes = ["python3.11"]
+      compatible_architectures = ["x86_64"]
+    }
+  }
+  
+  lambda_functions = {
+    analytics_function = {
+      runtime = "python3.11"
+      handler = "analytics.handler"
+      filename = "analytics.zip"
+      
+      # Reference layers (will be created by this module)
+      layers = [
+        # Layer ARNs will be available after creation
+        # These would typically be referenced as:
+        # module.lambda_with_layers.layer_arns["common_utils"],
+        # module.lambda_with_layers.layer_arns["ml_libraries"]
+      ]
+      
+      tags = {
+        Function = "Analytics"
+        UsesLayers = "true"
+      }
+    }
+  }
+}
+```
+
+### ARM64 (Graviton2) Optimization
+
+```hcl
+module "lambda_arm64" {
+  source = "./modules/lambda"
+
+  name_prefix = "cost-optimized"
+  
+  lambda_functions = {
+    graviton_processor = {
+      runtime = "python3.11"
+      handler = "processor.handle"
+      filename = "processor.zip"
+      architectures = ["arm64"]  # Use ARM64 for cost savings
+      memory_size = 512
+      timeout = 120
+      
+      environment_variables = {
+        ARCHITECTURE = "arm64"
+        COST_OPTIMIZED = "true"
+      }
+      
+      tags = {
+        Function = "GravitonProcessor"
+        Architecture = "ARM64"
+        CostOptimized = "true"
+      }
+    }
+  }
+}
+```
+
+## Module Inputs
+
+| Name | Description | Type | Default | Required |
+|------|-------------|------|---------|----------|
+| `name_prefix` | Prefix for all resource names | `string` | n/a | yes |
+| `lambda_functions` | Map of Lambda functions to create | `map(object)` | `{}` | no |
+| `lambda_layers` | Map of Lambda layers to create | `map(object)` | `{}` | no |
+| `common_tags` | Common tags for all resources | `map(string)` | `{}` | no |
+| `global_environment_variables` | Global environment variables for all functions | `map(string)` | `{}` | no |
+| `default_kms_key_arn` | Default KMS key for environment encryption | `string` | `null` | no |
+| `log_retention_days` | CloudWatch log retention period | `number` | `14` | no |
+| `log_kms_key_id` | KMS key for log encryption | `string` | `null` | no |
+
+### Lambda Function Configuration
+
+Each function in the `lambda_functions` map supports:
+
+#### Basic Configuration
+- `runtime` - Lambda runtime (e.g., "python3.11", "nodejs18.x")
+- `handler` - Function handler (e.g., "index.handler")
+- `filename` - Path to deployment package
+- `s3_bucket` - S3 bucket containing deployment package
+- `s3_key` - S3 object key for deployment package
+- `description` - Function description
+- `timeout` - Function timeout (1-900 seconds)
+- `memory_size` - Memory allocation (128-10240 MB, in 64MB increments)
+- `package_type` - "Zip" or "Image"
+
+#### Advanced Configuration
+- `vpc_config` - VPC configuration with subnets and security groups
+- `environment_variables` - Environment variables map
+- `kms_key_arn` - KMS key for environment variable encryption
+- `dead_letter_config` - Dead letter queue configuration
+- `tracing_mode` - X-Ray tracing ("PassThrough" or "Active")
+- `reserved_concurrent_executions` - Reserved concurrency limit
+- `provisioned_concurrency_config` - Provisioned concurrency settings
+- `architectures` - Processor architectures (["x86_64"] or ["arm64"])
+
+#### Container Configuration (for package_type = "Image")
+- `image_uri` - Container image URI
+- `image_config` - Entry point, command, and working directory
+
+#### Event Integration
+- `event_source_mappings` - Event source configurations
+- `function_url_config` - Function URL settings with CORS
+- `permissions` - Lambda permissions for external services
+
+#### Layers and Dependencies
+- `layers` - List of layer ARNs
+- `file_system_configs` - EFS file system configurations
+- `code_signing_config_arn` - Code signing configuration
+
+## Module Outputs
+
+| Name | Description |
+|------|-------------|
+| `lambda_functions` | Complete function details |
+| `function_arns` | Function ARNs |
+| `function_names` | Function names |
+| `function_invoke_arns` | Invoke ARNs for API Gateway |
+| `execution_role_arns` | IAM execution role ARNs |
+| `log_group_names` | CloudWatch log group names |
+| `function_urls` | Function URL endpoints |
+| `layer_arns` | Lambda layer ARNs |
+| `security_summary` | Security configuration overview |
+| `performance_summary` | Performance metrics summary |
+| `cost_optimization_summary` | Cost optimization insights |
+
+## Security Best Practices
+
+### IAM and Access Control
+- **Least Privilege**: Automatic IAM roles with minimal required permissions
+- **Service-Specific Roles**: Separate execution roles per function
+- **Policy Attachment**: Support for additional managed and custom policies
+- **Resource-Based Policies**: Function permissions for external service access
+
+### Encryption and Data Protection
+- **Environment Variables**: KMS encryption for sensitive configuration
+- **CloudWatch Logs**: Encrypted log storage with customer-managed keys
+- **Code Signing**: AWS Signer integration for code integrity
+- **VPC Integration**: Network isolation for sensitive workloads
+
+### Network Security
+- **VPC Configuration**: Private subnet deployment options
+- **Security Groups**: Granular network access control
+- **NAT Gateway**: Secure outbound internet access
+- **VPC Endpoints**: Private AWS service connectivity
+
+### Monitoring and Compliance
+- **X-Ray Tracing**: Distributed request tracing
+- **CloudWatch Integration**: Comprehensive logging and monitoring
+- **Dead Letter Queues**: Error handling and investigation
+- **CloudTrail Integration**: API call auditing
+
+## Performance Optimization
+
+### Memory and CPU Optimization
+```hcl
+# CPU-intensive workload
+memory_size = 1769  # 1 vCPU allocated
+
+# Memory-intensive workload  
+memory_size = 3008  # Maximum memory for optimal performance
+
+# Cost-optimized for simple tasks
+memory_size = 128   # Minimum memory allocation
+```
+
+### Concurrency Management
+```hcl
+# Reserved concurrency (guaranteed capacity)
+reserved_concurrent_executions = 100
+
+# Provisioned concurrency (reduced cold starts)
+provisioned_concurrency_config = {
+  provisioned_concurrent_executions = 10
+  qualifier = "$LATEST"
+}
+```
+
+### Architecture Selection
+```hcl
+# Cost optimization with ARM64
+architectures = ["arm64"]  # Up to 34% cost savings
+
+# Performance optimization with x86_64
+architectures = ["x86_64"]  # Maximum compatibility
+```
+
+## Monitoring and Observability
+
+### CloudWatch Integration
+- **Automatic Log Groups**: Created with configurable retention
+- **Structured Logging**: JSON format support for better parsing
+- **Custom Metrics**: Function-specific performance metrics
+- **Log Insights**: Advanced log querying capabilities
+
+### X-Ray Tracing
+```hcl
+tracing_mode = "Active"
+
+# Automatic IAM permissions for X-Ray
+# Performance insights and dependency mapping
+# Request flow visualization
+```
+
+### Performance Monitoring
+```hcl
+logging_config = {
+  log_format = "JSON"
+  application_log_level = "INFO"
+  system_log_level = "WARN"
+}
+```
+
+## Event Source Integration
+
+### Supported Event Sources
+- **Amazon Kinesis**: Stream processing with configurable batch sizes
+- **Amazon DynamoDB**: Table change streams
+- **Amazon SQS**: Queue message processing
+- **Amazon MSK**: Managed Kafka integration
+- **Self-Managed Kafka**: Custom Kafka cluster support
+- **Amazon MQ**: Message broker integration
+
+### Event Source Configuration
+```hcl
+event_source_mappings = {
+  kinesis_stream = {
+    event_source_arn = "arn:aws:kinesis:region:account:stream/name"
+    starting_position = "LATEST"
+    batch_size = 100
+    maximum_batching_window_in_seconds = 5
+    parallelization_factor = 2
+    
+    # Error handling
+    maximum_record_age_in_seconds = 3600
+    bisect_batch_on_function_error = true
+    maximum_retry_attempts = 3
+    
+    # Filtering
+    filter_criteria = {
+      filters = [
+        {
+          pattern = jsonencode({
+            eventType = ["ORDER_CREATED"]
+          })
+        }
+      ]
+    }
+  }
+}
+```
+
+## Cost Optimization Strategies
+
+### 1. ARM64 Architecture
+- Use Graviton2 processors for up to 34% cost savings
+- Suitable for most workloads with identical performance
+
+### 2. Memory Optimization
+- Right-size memory allocation based on actual usage
+- Monitor CloudWatch metrics for optimization opportunities
+- Consider memory vs. execution time trade-offs
+
+### 3. Concurrency Management
+- Use reserved concurrency only when necessary
+- Implement provisioned concurrency for latency-sensitive functions
+- Monitor concurrent execution metrics
+
+### 4. Storage Optimization
+- Minimize deployment package size
+- Use Lambda layers for shared dependencies
+- Optimize ephemeral storage usage
+
+## Troubleshooting Guide
+
+### Common Issues and Solutions
+
+#### Cold Start Performance
+```hcl
+# Solution 1: Provisioned Concurrency
+provisioned_concurrency_config = {
+  provisioned_concurrent_executions = 5
+}
+
+# Solution 2: Memory Optimization
+memory_size = 1024  # More CPU for faster initialization
+
+# Solution 3: Package Size Optimization
+# Use layers for dependencies
+# Minimize deployment package size
+```
+
+#### VPC Connectivity Issues
+```hcl
+# Ensure NAT Gateway for outbound connectivity
+vpc_config = {
+  subnet_ids = ["subnet-private-1", "subnet-private-2"]
+  security_group_ids = ["sg-lambda-functions"]
+}
+
+# Security group must allow outbound HTTPS (443)
+# VPC endpoints for AWS services reduce NAT costs
+```
+
+#### Permission Errors
+```hcl
+# Custom IAM policy for additional permissions
+custom_iam_policy = jsonencode({
+  Version = "2012-10-17"
+  Statement = [
+    {
+      Effect = "Allow"
+      Action = [
+        "s3:GetObject",
+        "secretsmanager:GetSecretValue"
+      ]
+      Resource = "*"
+    }
+  ]
+})
+```
+
+#### Memory or Timeout Issues
+```hcl
+# Increase memory for CPU-bound tasks
+memory_size = 3008
+
+# Increase timeout for long-running tasks
+timeout = 900
+
+# Monitor CloudWatch metrics:
+# - Duration
+# - Memory Utilization  
+# - Errors and Throttles
+```
+
+### Debugging Tools
+
+#### CloudWatch Logs Analysis
+```bash
+# View recent logs
+aws logs tail /aws/lambda/function-name --follow
+
+# Search logs with insights
+aws logs start-query \
+  --log-group-name /aws/lambda/function-name \
+  --start-time $(date -d '1 hour ago' +%s) \
+  --end-time $(date +%s) \
+  --query-string 'fields @timestamp, @message | filter @message like /ERROR/'
+```
+
+#### X-Ray Tracing
+- Enable tracing mode "Active"
+- Analyze service maps for performance bottlenecks
+- Identify cold start impact
+- Monitor downstream service dependencies
+
+#### Performance Monitoring
+```hcl
+# Enhanced monitoring configuration
+logging_config = {
+  log_format = "JSON"
+  application_log_level = "DEBUG"  # Temporary for troubleshooting
+  system_log_level = "INFO"
+}
+```
+
+## Integration Examples
+
+### API Gateway Integration
+```hcl
+# Lambda function configured for API Gateway
+resource "aws_api_gateway_integration" "lambda_integration" {
   rest_api_id = aws_api_gateway_rest_api.api.id
-  resource_id = aws_api_gateway_resource.proxy.id
-  http_method = aws_api_gateway_method.proxy.http_method
+  resource_id = aws_api_gateway_resource.resource.id
+  http_method = aws_api_gateway_method.method.http_method
 
   integration_http_method = "POST"
   type                   = "AWS_PROXY"
-  uri                    = module.api_lambda.invoke_arn
+  uri                    = module.lambda.function_invoke_arns["api_handler"]
 }
 
 # Lambda permission for API Gateway
 resource "aws_lambda_permission" "api_gateway" {
   statement_id  = "AllowExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"
-  function_name = module.api_lambda.function_name
+  function_name = module.lambda.function_names["api_handler"]
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_api_gateway_rest_api.api.execution_arn}/*/*"
 }
 ```
 
-### S3 Event Processing
-
+### EventBridge Integration
 ```hcl
-module "s3_processor" {
-  source = "../../modules/lambda"
-
-  function_name = "s3-image-processor"
-  runtime       = "python3.11"
-  handler       = "processor.handle_s3_event"
-
-  # Increased resources for image processing
-  timeout     = 300  # 5 minutes
-  memory_size = 2048 # 2GB for image processing
-
-  # Deployment configuration
-  filename         = "image-processor.zip"
-  source_code_hash = data.archive_file.processor_zip.output_base64sha256
-
-  # Environment variables
-  environment = {
-    variables = {
-      OUTPUT_BUCKET     = aws_s3_bucket.processed_images.bucket
-      THUMBNAIL_SIZE    = "200x200"
-      IMAGE_QUALITY     = "85"
-      SUPPORTED_FORMATS = "jpg,png,webp"
-    }
-  }
-
-  # VPC configuration for enhanced security
-  vpc_config = {
-    subnet_ids         = module.vpc.private_subnets
-    security_group_ids = [module.security_groups.lambda_sg_id]
-  }
-
-  # Layers for image processing libraries
-  layers = [
-    aws_lambda_layer_version.pillow_layer.arn,
-    aws_lambda_layer_version.opencv_layer.arn
-  ]
-
-  # Reserved concurrency to control costs
-  reserved_concurrent_executions = 10
-
-  execution_role_arn = module.iam.s3_processor_role_arn
-
-  tags = {
-    Environment = "production"
-    Service     = "image-processing"
-  }
-}
-
-# S3 bucket notification
-resource "aws_s3_bucket_notification" "image_upload" {
-  bucket = aws_s3_bucket.source_images.bucket
-
-  lambda_function {
-    lambda_function_arn = module.s3_processor.arn
-    events             = ["s3:ObjectCreated:*"]
-    filter_prefix      = "uploads/"
-    filter_suffix      = ".jpg"
-  }
-
-  lambda_function {
-    lambda_function_arn = module.s3_processor.arn
-    events             = ["s3:ObjectCreated:*"]
-    filter_prefix      = "uploads/"
-    filter_suffix      = ".png"
-  }
-
-  depends_on = [aws_lambda_permission.s3_invoke]
-}
-
-# Lambda permission for S3
-resource "aws_lambda_permission" "s3_invoke" {
-  statement_id  = "AllowExecutionFromS3Bucket"
-  action        = "lambda:InvokeFunction"
-  function_name = module.s3_processor.function_name
-  principal     = "s3.amazonaws.com"
-  source_arn    = aws_s3_bucket.source_images.arn
-}
-```
-
-### DynamoDB Stream Processing
-
-```hcl
-module "stream_processor" {
-  source = "../../modules/lambda"
-
-  function_name = "dynamodb-stream-processor"
-  runtime       = "java11"
-  handler       = "com.example.StreamProcessor::handleRequest"
-
-  # Java runtime configuration
-  timeout     = 60
-  memory_size = 1024
-
-  # JAR deployment
-  s3_bucket = aws_s3_bucket.lambda_deployments.bucket
-  s3_key    = "stream-processor-1.0.0.jar"
-
-  # Environment variables
-  environment = {
-    variables = {
-      NOTIFICATION_TOPIC = aws_sns_topic.user_notifications.arn
-      AUDIT_TABLE       = aws_dynamodb_table.audit_log.name
-      BATCH_SIZE        = "100"
-    }
-  }
-
-  # Event source mapping configuration
-  event_source_mapping = {
-    event_source_arn                   = aws_dynamodb_table.users.stream_arn
-    function_name                      = null  # Will be set after function creation
-    starting_position                  = "LATEST"
-    batch_size                        = 10
-    maximum_batching_window_in_seconds = 5
-    parallelization_factor            = 2
-    
-    # Error handling
-    maximum_record_age_in_seconds = 3600
-    maximum_retry_attempts       = 3
-    bisect_batch_on_function_error = true
-    
-    destination_config = {
-      on_failure = {
-        destination_arn = aws_sqs_queue.stream_dlq.arn
-      }
-    }
-  }
-
-  execution_role_arn = module.iam.stream_processor_role_arn
-
-  tags = {
-    Environment = "production"
-    Service     = "stream-processing"
-  }
-}
-```
-
-### Scheduled Lambda Function
-
-```hcl
-module "scheduled_task" {
-  source = "../../modules/lambda"
-
-  function_name = "daily-report-generator"
-  runtime       = "nodejs18.x"
-  handler       = "report.generateDaily"
-
-  # Long-running task configuration
-  timeout     = 900  # 15 minutes
-  memory_size = 3008 # Maximum memory
-
-  # Code deployment
-  filename         = "report-generator.zip"
-  source_code_hash = data.archive_file.report_zip.output_base64sha256
-
-  # Environment configuration
-  environment = {
-    variables = {
-      REPORT_BUCKET     = aws_s3_bucket.reports.bucket
-      DATABASE_URL      = "postgresql://${module.rds.endpoint}/reports"
-      EMAIL_TOPIC       = aws_sns_topic.report_notifications.arn
-      TIMEZONE          = "America/New_York"
-    }
-  }
-
-  # VPC access for database
-  vpc_config = {
-    subnet_ids         = module.vpc.private_subnets
-    security_group_ids = [module.security_groups.lambda_sg_id]
-  }
-
-  execution_role_arn = module.iam.report_generator_role_arn
-
-  tags = {
-    Environment = "production"
-    Service     = "reporting"
-    Schedule    = "daily"
-  }
-}
-
-# CloudWatch Event Rule for scheduling
-resource "aws_cloudwatch_event_rule" "daily_report" {
-  name                = "daily-report-schedule"
-  description         = "Trigger daily report generation"
-  schedule_expression = "cron(0 8 * * ? *)"  # Daily at 8 AM UTC
+# EventBridge rule targeting Lambda
+resource "aws_cloudwatch_event_rule" "lambda_schedule" {
+  name                = "lambda-schedule"
+  description         = "Trigger Lambda function"
+  schedule_expression = "rate(5 minutes)"
 }
 
 resource "aws_cloudwatch_event_target" "lambda_target" {
-  rule      = aws_cloudwatch_event_rule.daily_report.name
-  target_id = "TriggerLambda"
-  arn       = module.scheduled_task.arn
-
-  # Pass configuration to the Lambda
-  input = jsonencode({
-    report_type = "daily"
-    format     = "pdf"
-  })
-}
-
-# Permission for CloudWatch Events
-resource "aws_lambda_permission" "allow_cloudwatch" {
-  statement_id  = "AllowExecutionFromCloudWatch"
-  action        = "lambda:InvokeFunction"
-  function_name = module.scheduled_task.function_name
-  principal     = "events.amazonaws.com"
-  source_arn    = aws_cloudwatch_event_rule.daily_report.arn
+  rule      = aws_cloudwatch_event_rule.lambda_schedule.name
+  target_id = "LambdaTarget"
+  arn       = module.lambda.function_arns["scheduled_processor"]
 }
 ```
 
-### Container Image Lambda
-
+### Step Functions Integration
 ```hcl
-module "container_lambda" {
-  source = "../../modules/lambda"
+# Step Functions state machine
+resource "aws_sfn_state_machine" "lambda_workflow" {
+  name     = "lambda-workflow"
+  role_arn = aws_iam_role.step_functions_role.arn
 
-  function_name = "ml-inference-api"
-  package_type  = "Image"
+  definition = jsonencode({
+    Comment = "Lambda workflow"
+    StartAt = "ProcessData"
+    States = {
+      ProcessData = {
+        Type = "Task"
+        Resource = module.lambda.function_arns["data_processor"]
+        End = true
+      }
+    }
+  })
+}
+```
 
-  # Container image configuration
-  image_uri = "${aws_ecr_repository.ml_models.repository_url}:latest"
+## Advanced Patterns
 
-  # Optimized for ML inference
-  timeout     = 600   # 10 minutes
-  memory_size = 10240 # 10GB
-  
-  # Architecture for ML workloads
-  architectures = ["x86_64"]
-
-  # Environment configuration
-  environment = {
-    variables = {
-      MODEL_BUCKET    = aws_s3_bucket.ml_models.bucket
-      INFERENCE_MODE  = "production"
-      BATCH_SIZE      = "32"
-      GPU_ENABLED     = "false"
+### Blue/Green Deployments with Aliases
+```hcl
+# Function with alias for blue/green deployments
+lambda_functions = {
+  api_function = {
+    # ... function configuration ...
+    publish = true
+    
+    aliases = {
+      name = "live"
+      description = "Live production alias"
+      routing_config = {
+        additional_version_weights = {
+          "2" = 0.1  # 10% traffic to new version
+        }
+      }
     }
   }
-
-  # Image configuration
-  image_config = {
-    entry_point = ["/app/bootstrap"]
-    command     = ["handler.inference"]
-    working_directory = "/app"
-  }
-
-  # Provisioned concurrency for consistent performance
-  provisioned_concurrency_config = {
-    provisioned_concurrent_executions = 5
-  }
-
-  execution_role_arn = module.iam.ml_inference_role_arn
-
-  tags = {
-    Environment = "production"
-    Service     = "ml-inference"
-    Runtime     = "container"
-  }
-}
-
-# ECR repository for container images
-resource "aws_ecr_repository" "ml_models" {
-  name                 = "ml-inference-lambda"
-  image_tag_mutability = "MUTABLE"
-
-  image_scanning_configuration {
-    scan_on_push = true
-  }
 }
 ```
 
-### Lambda Layer for Shared Dependencies
-
+### Multi-Runtime Layer Strategy
 ```hcl
-# Create a Lambda layer for shared dependencies
-resource "aws_lambda_layer_version" "common_libs" {
-  filename            = "common-libs-layer.zip"
-  layer_name          = "common-python-libs"
-  source_code_hash    = data.archive_file.layer_zip.output_base64sha256
-
-  compatible_runtimes      = ["python3.9", "python3.10", "python3.11"]
-  compatible_architectures = ["x86_64", "arm64"]
-
-  description = "Common Python libraries for Lambda functions"
-
-  license_info = "MIT"
-}
-
-# Package layer dependencies
-data "archive_file" "layer_zip" {
-  type        = "zip"
-  source_dir  = "${path.module}/layers/python"
-  output_path = "${path.module}/common-libs-layer.zip"
-}
-
-# Lambda function using the layer
-module "lambda_with_layer" {
-  source = "../../modules/lambda"
-
-  function_name = "function-with-layer"
-  runtime       = "python3.11"
-  handler       = "app.handler"
-
-  filename         = "function-code.zip"
-  source_code_hash = data.archive_file.function_zip.output_base64sha256
-
-  # Include the layer
-  layers = [
-    aws_lambda_layer_version.common_libs.arn,
-    "arn:aws:lambda:us-east-1:017000801446:layer:AWSLambdaPowertoolsPythonV2:42"
-  ]
-
-  timeout     = 30
-  memory_size = 256
-
-  execution_role_arn = module.iam.lambda_execution_role_arn
-
-  tags = {
-    Environment = "production"
-    HasLayers   = "true"
+lambda_layers = {
+  common_utils = {
+    filename = "layers/common-utils.zip"
+    compatible_runtimes = [
+      "python3.9", "python3.10", "python3.11"
+    ]
+    compatible_architectures = ["x86_64", "arm64"]
+  }
+  
+  node_dependencies = {
+    filename = "layers/node-deps.zip"
+    compatible_runtimes = [
+      "nodejs16.x", "nodejs18.x", "nodejs20.x"
+    ]
   }
 }
 ```
 
-## Configuration Options
-
-### Required Variables
-
-| Variable | Type | Description |
-|----------|------|-------------|
-| `function_name` | `string` | Name of the Lambda function |
-| `runtime` | `string` | Function runtime (python3.11, nodejs18.x, etc.) |
-| `handler` | `string` | Function entrypoint in your code |
-
-### Code Deployment
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `filename` | `string` | `null` | Path to the deployment package (ZIP) |
-| `s3_bucket` | `string` | `null` | S3 bucket containing deployment package |
-| `s3_key` | `string` | `null` | S3 key of the deployment package |
-| `s3_object_version` | `string` | `null` | S3 object version to use |
-| `image_uri` | `string` | `null` | Container image URI for Image package type |
-| `source_code_hash` | `string` | `null` | Used to trigger updates when source changes |
-
-### Function Configuration
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `timeout` | `number` | `3` | Function timeout in seconds (1-900) |
-| `memory_size` | `number` | `128` | Memory allocation in MB (128-10240) |
-| `package_type` | `string` | `"Zip"` | Deployment package type (Zip or Image) |
-| `architectures` | `list(string)` | `["x86_64"]` | Instruction set architecture |
-| `layers` | `list(string)` | `[]` | Lambda layers to attach |
-
-### Environment & Security
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `environment` | `map` | `{}` | Environment variables |
-| `kms_key_arn` | `string` | `null` | KMS key for environment variable encryption |
-| `execution_role_arn` | `string` | - | IAM role for function execution |
-| `vpc_config` | `object` | `null` | VPC configuration for network access |
-
-### Performance & Scaling
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `reserved_concurrent_executions` | `number` | `null` | Reserved concurrency limit |
-| `provisioned_concurrency_config` | `object` | `null` | Provisioned concurrency settings |
-| `dead_letter_config` | `object` | `null` | Dead letter queue configuration |
-
-### Monitoring & Tracing
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `tracing_config` | `object` | `null` | X-Ray tracing configuration |
-| `log_retention_in_days` | `number` | `14` | CloudWatch logs retention period |
-
-## Outputs
-
-### Function Information
-
-| Output | Description |
-|--------|-------------|
-| `function_name` | Lambda function name |
-| `function_arn` | Lambda function ARN |
-| `arn` | Lambda function ARN (alias for function_arn) |
-| `invoke_arn` | ARN for invoking the Lambda function |
-| `qualified_arn` | Function ARN with version or alias |
-
-### Function Configuration
-
-| Output | Description |
-|--------|-------------|
-| `version` | Latest published version of the function |
-| `last_modified` | Date the function was last modified |
-| `source_code_hash` | SHA256 hash of the function's deployment package |
-| `source_code_size` | Size of the function's deployment package |
-
-### Runtime Information
-
-| Output | Description |
-|--------|-------------|
-| `runtime` | Runtime environment for the function |
-| `handler` | Function entry point |
-| `timeout` | Function timeout value |
-| `memory_size` | Function memory allocation |
-
-## Best Practices
-
-### 🚀 **Performance Optimization**
-
-1. **Memory and CPU**
-   - Monitor actual memory usage and right-size functions
-   - Use Performance Insights to identify optimization opportunities
-   - Consider provisioned concurrency for latency-sensitive applications
-
-2. **Cold Start Optimization**
-   - Minimize deployment package size
-   - Use connection pooling and keep connections warm
-   - Initialize resources outside the handler function
-   - Consider using Provisioned Concurrency for critical functions
-
-3. **Code Optimization**
-   ```python
-   # Good: Initialize outside handler
-   import boto3
-   
-   dynamodb = boto3.resource('dynamodb')
-   table = dynamodb.Table('MyTable')
-   
-   def lambda_handler(event, context):
-       # Handler code here
-       return table.get_item(Key={'id': event['id']})
-   ```
-
-### 🔒 **Security Best Practices**
-
-1. **IAM Permissions**
-   - Follow principle of least privilege
-   - Use resource-specific permissions
-   - Regularly audit and review permissions
-
-2. **Environment Variables**
-   - Use AWS Secrets Manager or Parameter Store for sensitive data
-   - Encrypt environment variables with KMS
-   - Avoid hardcoding credentials in code
-
-3. **VPC Security**
-   - Use private subnets for database access
-   - Implement security groups with minimal required ports
-   - Consider NAT Gateway costs for internet access
-
-### 💰 **Cost Optimization**
-
-1. **Resource Management**
-   - Monitor and optimize memory allocation
-   - Use reserved concurrency to control costs
-   - Implement efficient error handling to reduce retries
-
-2. **Architecture Patterns**
-   - Use event-driven architectures to reduce idle time
-   - Batch processing for high-volume workloads
-   - Consider Step Functions for complex workflows
-
-3. **Monitoring and Alerting**
-   ```hcl
-   # Cost monitoring alarm
-   resource "aws_cloudwatch_metric_alarm" "lambda_cost" {
-     alarm_name          = "lambda-high-invocations"
-     comparison_operator = "GreaterThanThreshold"
-     evaluation_periods  = "2"
-     metric_name         = "Invocations"
-     namespace           = "AWS/Lambda"
-     period              = "300"
-     statistic           = "Sum"
-     threshold           = "10000"
-     alarm_description   = "This metric monitors lambda invocations"
-   
-     dimensions = {
-       FunctionName = module.my_lambda.function_name
-     }
-   }
-   ```
-
-### 📊 **Monitoring Best Practices**
-
-1. **CloudWatch Metrics**
-   - Monitor duration, errors, throttles, and concurrent executions
-   - Set up alarms for error rates and performance degradation
-   - Use custom metrics for business-specific monitoring
-
-2. **Logging Strategy**
-   ```python
-   import json
-   import logging
-   
-   logger = logging.getLogger()
-   logger.setLevel(logging.INFO)
-   
-   def lambda_handler(event, context):
-       logger.info(f"Processing event: {json.dumps(event)}")
-       
-       try:
-           # Function logic
-           result = process_data(event)
-           logger.info(f"Successfully processed: {result}")
-           return result
-       except Exception as e:
-           logger.error(f"Error processing event: {str(e)}")
-           raise
-   ```
-
-3. **X-Ray Tracing**
-   - Enable X-Ray for distributed tracing
-   - Add custom segments for external service calls
-   - Monitor service maps for performance bottlenecks
-
-## Integration Examples
-
-### API Gateway REST API
-
+### Disaster Recovery Configuration
 ```hcl
-# Complete API Gateway integration
-resource "aws_api_gateway_rest_api" "lambda_api" {
-  name        = "lambda-rest-api"
-  description = "REST API backed by Lambda"
+# Cross-region deployment for disaster recovery
+module "lambda_primary" {
+  source = "./modules/lambda"
   
-  endpoint_configuration {
-    types = ["REGIONAL"]
+  providers = {
+    aws = aws.primary
   }
-}
-
-resource "aws_api_gateway_resource" "proxy" {
-  rest_api_id = aws_api_gateway_rest_api.lambda_api.id
-  parent_id   = aws_api_gateway_rest_api.lambda_api.root_resource_id
-  path_part   = "{proxy+}"
-}
-
-resource "aws_api_gateway_method" "proxy" {
-  rest_api_id   = aws_api_gateway_rest_api.lambda_api.id
-  resource_id   = aws_api_gateway_resource.proxy.id
-  http_method   = "ANY"
-  authorization = "NONE"
-}
-
-resource "aws_api_gateway_integration" "lambda" {
-  rest_api_id = aws_api_gateway_rest_api.lambda_api.id
-  resource_id = aws_api_gateway_method.proxy.resource_id
-  http_method = aws_api_gateway_method.proxy.http_method
-
-  integration_http_method = "POST"
-  type                   = "AWS_PROXY"
-  uri                    = module.api_lambda.invoke_arn
-}
-
-resource "aws_api_gateway_deployment" "lambda_api" {
-  depends_on = [
-    aws_api_gateway_integration.lambda,
-  ]
-
-  rest_api_id = aws_api_gateway_rest_api.lambda_api.id
-  stage_name  = "prod"
-}
-```
-
-
-
-### SQS Queue Processing
-
-```hcl
-# SQS Event Source Mapping
-resource "aws_lambda_event_source_mapping" "sqs" {
-  event_source_arn = aws_sqs_queue.processing_queue.arn
-  function_name    = module.queue_processor.arn
-  batch_size       = 10
-
-  # Error handling
-  maximum_batching_window_in_seconds = 5
   
-  function_response_types = ["ReportBatchItemFailures"]
+  # ... configuration ...
+}
+
+module "lambda_dr" {
+  source = "./modules/lambda"
   
-  scaling_config {
-    maximum_concurrency = 100
+  providers = {
+    aws = aws.disaster_recovery
   }
-}
-
-# Dead letter queue for failed messages
-resource "aws_sqs_queue" "dlq" {
-  name = "processing-dlq"
   
-  message_retention_seconds = 1209600  # 14 days
+  # Same configuration as primary
+  # ... configuration ...
 }
-
-resource "aws_sqs_queue_redrive_policy" "processing_queue" {
-  queue_url = aws_sqs_queue.processing_queue.id
-  redrive_policy = jsonencode({
-    deadLetterTargetArn = aws_sqs_queue.dlq.arn
-    maxReceiveCount     = 3
-  })
-}
-```
-
-## Troubleshooting
-
-### Common Issues
-
-#### **Cold Start Latency**
-```python
-# Optimize imports and initialization
-import json
-import boto3
-from aws_lambda_powertools import Logger, Tracer
-
-# Initialize outside handler
-logger = Logger()
-tracer = Tracer()
-dynamodb = boto3.resource('dynamodb')
-
-@tracer.capture_lambda_handler
-@logger.inject_lambda_context
-def lambda_handler(event, context):
-    # Handler logic
-    return {'statusCode': 200}
-```
-
-#### **Timeout Issues**
-```hcl
-# Monitor timeout metrics
-resource "aws_cloudwatch_metric_alarm" "lambda_timeout" {
-  alarm_name          = "lambda-timeout-alarm"
-  comparison_operator = "GreaterThanThreshold"
-  evaluation_periods  = "2"
-  metric_name         = "Duration"
-  namespace           = "AWS/Lambda"
-  period              = "60"
-  statistic           = "Maximum"
-  threshold           = "25000"  # 25 seconds for 30-second timeout
-  alarm_description   = "Lambda function approaching timeout"
-
-  dimensions = {
-    FunctionName = module.my_lambda.function_name
-  }
-}
-```
-
-#### **Memory Issues**
-```bash
-# Check memory usage in CloudWatch Logs
-grep "Max Memory Used" /aws/lambda/my-function
-
-# Or use PowerTools for automatic memory reporting
-from aws_lambda_powertools import Logger
-
-logger = Logger()
-
-@logger.inject_lambda_context
-def lambda_handler(event, context):
-    # Memory usage will be automatically logged
-    return process_event(event)
-```
-
-#### **VPC Connectivity**
-```bash
-# Test VPC connectivity from Lambda
-import socket
-
-def test_connectivity():
-    try:
-        socket.create_connection(("database.internal", 5432), timeout=5)
-        return "Connected to database"
-    except socket.error as e:
-        return f"Connection failed: {e}"
-```
-
-### Debugging Commands
-
-```bash
-# View function configuration
-aws lambda get-function --function-name my-function
-
-# Check recent invocations
-aws logs filter-log-events \
-  --log-group-name /aws/lambda/my-function \
-  --start-time $(date -d "1 hour ago" +%s)000
-
-# Monitor real-time logs
-aws logs tail /aws/lambda/my-function --follow
-
-# Check function metrics
-aws cloudwatch get-metric-statistics \
-  --namespace AWS/Lambda \
-  --metric-name Duration \
-  --dimensions Name=FunctionName,Value=my-function \
-  --start-time 2024-01-01T00:00:00Z \
-  --end-time 2024-01-01T23:59:59Z \
-  --period 3600 \
-  --statistics Average,Maximum
 ```
 
 ## Requirements
 
-- **Terraform**: >= 1.9.0
-- **AWS Provider**: ~> 5.80
-- **Minimum Permissions**: Lambda management, IAM role creation, CloudWatch access
+| Name | Version |
+|------|---------|
+| terraform | >= 1.9.0 |
+| aws | ~> 5.0 |
+| archive | ~> 2.0 |
 
-## Related Documentation
+## Providers
 
-- [AWS Lambda Developer Guide](https://docs.aws.amazon.com/lambda/latest/dg/)
-- [Lambda Best Practices](https://docs.aws.amazon.com/lambda/latest/dg/best-practices.html)
-- [Lambda Performance Optimization](https://docs.aws.amazon.com/lambda/latest/dg/performance-optimization.html)
-- [AWS Lambda Powertools](https://awslabs.github.io/aws-lambda-powertools/)
+| Name | Version |
+|------|---------|
+| aws | ~> 5.0 |
+| archive | ~> 2.0 |
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes with tests
+4. Submit a pull request
+
+## License
+
+This module is released under the MIT License. See LICENSE file for details.
+
+## Support
+
+For issues and questions:
+1. Check the troubleshooting guide above
+2. Review AWS Lambda documentation
+3. Create an issue in the repository
+4. Contact the development team
 
 ---
 
-## 👤 Author
-
-**Diego A. Zarate** - *Serverless Architecture & Lambda Specialist*
-
----
-
-> ⚡ **Serverless Excellence**: This Lambda module provides enterprise-grade serverless computing with automatic scaling, comprehensive monitoring, and battle-tested integration patterns built-in.
+*This module follows AWS Well-Architected Framework principles and is designed for production use with enterprise-grade security, monitoring, and performance optimization capabilities.*

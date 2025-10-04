@@ -1,229 +1,288 @@
-# =============================================================================
-# EKS MODULE VARIABLES
-# =============================================================================
+# EKS Module - Variables
+# Author: Diego A. Zarate
 
-variable "create_cluster" {
-  description = "Whether to create the EKS cluster"
-  type        = bool
-  default     = false
-}
-
-variable "cluster_name" {
-  description = "Name of the EKS cluster"
+# General Configuration
+variable "name_prefix" {
+  description = "Name prefix for EKS resources"
   type        = string
-  default     = "default-eks-cluster"
+  default     = "app"
+
+  validation {
+    condition     = length(var.name_prefix) > 0 && length(var.name_prefix) <= 32
+    error_message = "Name prefix must be between 1 and 32 characters."
+  }
 }
 
-variable "cluster_version" {
-  description = "Kubernetes version to use for the EKS cluster"
-  type        = string
-  default     = "1.31"
+variable "tags" {
+  description = "A map of tags to assign to EKS resources"
+  type        = map(string)
+  default     = {}
 }
 
-variable "subnet_ids" {
-  description = "List of subnet IDs for the EKS cluster"
-  type        = list(string)
-  default     = []
-}
-
-variable "cluster_endpoint_private_access" {
-  description = "Enable private API server endpoint"
-  type        = bool
-  default     = true
-}
-
-variable "cluster_endpoint_public_access" {
-  description = "Enable public API server endpoint"
-  type        = bool
-  default     = true
-}
-
-variable "cluster_endpoint_public_access_cidrs" {
-  description = "List of CIDR blocks that can access the public API server endpoint"
-  type        = list(string)
-  default     = ["0.0.0.0/0"]
-}
-
-variable "cluster_additional_security_group_ids" {
-  description = "List of additional security group IDs to attach to the cluster"
-  type        = list(string)
-  default     = []
-}
-
-variable "cluster_enabled_log_types" {
-  description = "List of control plane logging to enable"
-  type        = list(string)
-  default     = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
-}
-
-variable "cluster_encryption_config" {
-  description = "Configuration block with encryption configuration for the cluster"
-  type = list(object({
-    provider_key_arn = string
-    resources        = list(string)
-  }))
-  default = []
-}
-
-variable "cloudwatch_log_group_retention_in_days" {
-  description = "Number of days to retain log events"
+# Logging Configuration
+variable "log_retention_in_days" {
+  description = "Number of days to retain EKS cluster logs"
   type        = number
   default     = 7
+
+  validation {
+    condition = contains([
+      1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653
+    ], var.log_retention_in_days)
+    error_message = "Log retention must be a valid CloudWatch log retention period."
+  }
 }
 
-variable "cloudwatch_log_group_kms_key_id" {
-  description = "The ARN of the KMS Key to use when encrypting log data"
+variable "kms_key_id" {
+  description = "KMS key ID for encrypting CloudWatch logs"
   type        = string
   default     = null
 }
 
-# =============================================================================
-# NODE GROUPS CONFIGURATION
-# =============================================================================
-
-variable "node_groups" {
-  description = "Map of EKS managed node group definitions"
+# EKS Clusters Configuration
+variable "eks_clusters" {
+  description = "Map of EKS clusters to create"
   type = map(object({
-    subnet_ids                 = list(string)
-    instance_types             = list(string)
-    ami_type                   = optional(string, "AL2_x86_64")
-    capacity_type              = optional(string, "SPOT") # Use SPOT for cost optimization
-    disk_size                  = optional(number, 20)
-    desired_size               = optional(number, 1)
-    max_size                   = optional(number, 3)
-    min_size                   = optional(number, 1)
-    max_unavailable_percentage = optional(number, 25)
-    launch_template_id         = optional(string)
-    launch_template_version    = optional(string, "$Latest")
-    taints = optional(list(object({
-      key    = string
-      value  = string
-      effect = string
-    })), [])
-    labels = optional(map(string), {})
-    tags   = optional(map(string), {})
-  }))
-  default = {}
-}
+    # Basic Configuration
+    version = optional(string, null)
 
-# =============================================================================
-# FARGATE PROFILES CONFIGURATION
-# =============================================================================
+    # VPC Configuration
+    subnet_ids              = list(string)
+    endpoint_private_access = optional(bool, true)
+    endpoint_public_access  = optional(bool, false)
+    public_access_cidrs     = optional(list(string), ["0.0.0.0/0"])
+    security_group_ids      = optional(list(string), [])
 
-variable "fargate_profiles" {
-  description = "Map of EKS Fargate Profile definitions"
-  type = map(object({
-    subnet_ids = list(string)
-    selectors = list(object({
-      namespace = string
-      labels    = optional(map(string), {})
-    }))
+    # Encryption Configuration
+    encryption_config = optional(object({
+      provider = object({
+        key_arn = string
+      })
+      resources = list(string)
+    }), null)
+
+    # Logging Configuration
+    enabled_cluster_log_types = optional(list(string), [])
+
+    # Access Configuration
+    access_config = optional(object({
+      authentication_mode                         = optional(string, "API_AND_CONFIG_MAP")
+      bootstrap_cluster_creator_admin_permissions = optional(bool, true)
+    }), null)
+
+    # Node Groups
+    node_groups = optional(map(object({
+      subnet_ids     = list(string)
+      capacity_type  = optional(string, "ON_DEMAND")
+      ami_type      = optional(string, "AL2_x86_64")
+      instance_types = optional(list(string), ["t3.medium"])
+      disk_size     = optional(number, 20)
+
+      # Scaling Configuration
+      scaling_config = object({
+        desired_size = number
+        max_size     = number
+        min_size     = number
+      })
+
+      # Update Configuration
+      update_config = optional(object({
+        max_unavailable_percentage = optional(number, null)
+        max_unavailable           = optional(number, null)
+      }), null)
+
+      # Remote Access Configuration
+      remote_access = optional(object({
+        ec2_ssh_key               = optional(string, null)
+        source_security_group_ids = optional(list(string), [])
+      }), null)
+
+      # Launch Template
+      launch_template = optional(object({
+        id      = optional(string, null)
+        name    = optional(string, null)
+        version = optional(string, null)
+      }), null)
+
+      # Labels and Taints
+      labels = optional(map(string), {})
+      taints = optional(list(object({
+        key    = string
+        value  = string
+        effect = string
+      })), [])
+
+      tags = optional(map(string), {})
+    })), {})
+
+    # Fargate Profiles
+    fargate_profiles = optional(map(object({
+      subnet_ids = list(string)
+      selectors = list(object({
+        namespace = string
+        labels    = optional(map(string), {})
+      }))
+      tags = optional(map(string), {})
+    })), {})
+
+    # Add-ons
+    addons = optional(map(object({
+      addon_version                = optional(string, null)
+      resolve_conflicts_on_create  = optional(string, "OVERWRITE")
+      resolve_conflicts_on_update  = optional(string, "OVERWRITE")
+      service_account_role_arn     = optional(string, null)
+      configuration_values         = optional(string, null)
+      tags                        = optional(map(string), {})
+    })), {})
+
     tags = optional(map(string), {})
   }))
   default = {}
-}
 
-# =============================================================================
-# EKS ADDONS CONFIGURATION
-# =============================================================================
-
-variable "cluster_addons" {
-  description = "Map of cluster addon configurations"
-  type = map(object({
-    addon_version            = optional(string)
-    resolve_conflicts        = optional(string, "OVERWRITE")
-    service_account_role_arn = optional(string)
-  }))
-  default = {
-    # AWS VPC CNI
-    vpc-cni = {
-      addon_version = null # Use cluster default
-    }
-    # CoreDNS
-    coredns = {
-      addon_version = null # Use cluster default
-    }
-    # kube-proxy
-    kube-proxy = {
-      addon_version = null # Use cluster default
-    }
-    # AWS EBS CSI Driver
-    aws-ebs-csi-driver = {
-      addon_version = null # Use cluster default
-    }
+  validation {
+    condition = alltrue([
+      for cluster_name, cluster_config in var.eks_clusters :
+      length(cluster_config.subnet_ids) >= 2
+    ])
+    error_message = "EKS clusters must have at least 2 subnets for high availability."
   }
-}
 
-# =============================================================================
-# MARKETPLACE ADDONS CONFIGURATION
-# =============================================================================
+  validation {
+    condition = alltrue([
+      for cluster_name, cluster_config in var.eks_clusters :
+      alltrue([
+        for ng_name, ng_config in cluster_config.node_groups :
+        contains(["ON_DEMAND", "SPOT"], ng_config.capacity_type)
+      ])
+    ])
+    error_message = "Node group capacity type must be either 'ON_DEMAND' or 'SPOT'."
+  }
 
-variable "enable_marketplace_addons" {
-  description = "Enable installation of common marketplace addons"
-  type        = bool
-  default     = true
-}
+  validation {
+    condition = alltrue([
+      for cluster_name, cluster_config in var.eks_clusters :
+      alltrue([
+        for ng_name, ng_config in cluster_config.node_groups :
+        contains([
+          "AL2_x86_64", "AL2_x86_64_GPU", "AL2_ARM_64", 
+          "CUSTOM", "BOTTLEROCKET_ARM_64", "BOTTLEROCKET_x86_64",
+          "BOTTLEROCKET_ARM_64_NVIDIA", "BOTTLEROCKET_x86_64_NVIDIA",
+          "WINDOWS_CORE_2019_x86_64", "WINDOWS_FULL_2019_x86_64",
+          "WINDOWS_CORE_2022_x86_64", "WINDOWS_FULL_2022_x86_64"
+        ], ng_config.ami_type)
+      ])
+    ])
+    error_message = "Invalid AMI type specified for node group."
+  }
 
-variable "aws_load_balancer_controller" {
-  description = "Configuration for AWS Load Balancer Controller"
-  type = object({
-    enabled              = optional(bool, true)
-    version              = optional(string, "v2.6.0")
-    service_account_name = optional(string, "aws-load-balancer-controller")
-    namespace            = optional(string, "kube-system")
-  })
-  default = {}
-}
+  validation {
+    condition = alltrue([
+      for cluster_name, cluster_config in var.eks_clusters :
+      alltrue([
+        for ng_name, ng_config in cluster_config.node_groups :
+        ng_config.scaling_config.min_size <= ng_config.scaling_config.desired_size &&
+        ng_config.scaling_config.desired_size <= ng_config.scaling_config.max_size &&
+        ng_config.scaling_config.min_size >= 0 &&
+        ng_config.scaling_config.max_size <= 1000
+      ])
+    ])
+    error_message = "Invalid scaling configuration: min_size <= desired_size <= max_size, and max_size <= 1000."
+  }
 
-variable "cluster_autoscaler" {
-  description = "Configuration for Cluster Autoscaler"
-  type = object({
-    enabled              = optional(bool, true)
-    version              = optional(string, "1.27.0")
-    service_account_name = optional(string, "cluster-autoscaler")
-    namespace            = optional(string, "kube-system")
-  })
-  default = {}
-}
+  validation {
+    condition = alltrue([
+      for cluster_name, cluster_config in var.eks_clusters :
+      alltrue([
+        for ng_name, ng_config in cluster_config.node_groups :
+        ng_config.disk_size >= 1 && ng_config.disk_size <= 100
+      ])
+    ])
+    error_message = "Node group disk size must be between 1 and 100 GB."
+  }
 
-variable "metrics_server" {
-  description = "Configuration for Metrics Server"
-  type = object({
-    enabled   = optional(bool, true)
-    version   = optional(string, "v0.6.4")
-    namespace = optional(string, "kube-system")
-  })
-  default = {}
-}
+  validation {
+    condition = alltrue([
+      for cluster_name, cluster_config in var.eks_clusters :
+      alltrue([
+        for ng_name, ng_config in cluster_config.node_groups :
+        ng_config.update_config == null || (
+          (ng_config.update_config.max_unavailable_percentage == null) != 
+          (ng_config.update_config.max_unavailable == null)
+        )
+      ])
+    ])
+    error_message = "Update config must specify either max_unavailable_percentage or max_unavailable, not both."
+  }
 
-variable "ingress_nginx" {
-  description = "Configuration for NGINX Ingress Controller"
-  type = object({
-    enabled   = optional(bool, false)
-    version   = optional(string, "4.8.0")
-    namespace = optional(string, "ingress-nginx")
-  })
-  default = {}
-}
+  validation {
+    condition = alltrue([
+      for cluster_name, cluster_config in var.eks_clusters :
+      alltrue([
+        for ng_name, ng_config in cluster_config.node_groups :
+        alltrue([
+          for taint in ng_config.taints :
+          contains(["NoSchedule", "NoExecute", "PreferNoSchedule"], taint.effect)
+        ])
+      ])
+    ])
+    error_message = "Taint effect must be one of: NoSchedule, NoExecute, PreferNoSchedule."
+  }
 
-variable "external_dns" {
-  description = "Configuration for External DNS"
-  type = object({
-    enabled              = optional(bool, false)
-    version              = optional(string, "1.13.0")
-    service_account_name = optional(string, "external-dns")
-    namespace            = optional(string, "kube-system")
-    domain_filters       = optional(list(string), [])
-  })
-  default = {}
-}
+  validation {
+    condition = alltrue([
+      for cluster_name, cluster_config in var.eks_clusters :
+      cluster_config.access_config == null || contains([
+        "API", "API_AND_CONFIG_MAP", "CONFIG_MAP"
+      ], cluster_config.access_config.authentication_mode)
+    ])
+    error_message = "Authentication mode must be one of: API, API_AND_CONFIG_MAP, CONFIG_MAP."
+  }
 
-# =============================================================================
-# COMMON VARIABLES
-# =============================================================================
+  validation {
+    condition = alltrue([
+      for cluster_name, cluster_config in var.eks_clusters :
+      alltrue([
+        for addon_name, addon_config in cluster_config.addons :
+        addon_config.resolve_conflicts_on_create == null || contains([
+          "OVERWRITE", "NONE"
+        ], addon_config.resolve_conflicts_on_create)
+      ])
+    ])
+    error_message = "Resolve conflicts on create must be either 'OVERWRITE' or 'NONE'."
+  }
 
-variable "tags" {
-  description = "A map of tags to assign to all resources"
-  type        = map(string)
-  default     = {}
+  validation {
+    condition = alltrue([
+      for cluster_name, cluster_config in var.eks_clusters :
+      alltrue([
+        for addon_name, addon_config in cluster_config.addons :
+        addon_config.resolve_conflicts_on_update == null || contains([
+          "OVERWRITE", "NONE", "PRESERVE"
+        ], addon_config.resolve_conflicts_on_update)
+      ])
+    ])
+    error_message = "Resolve conflicts on update must be one of: OVERWRITE, NONE, PRESERVE."
+  }
+
+  validation {
+    condition = alltrue([
+      for cluster_name, cluster_config in var.eks_clusters :
+      alltrue([
+        for fp_name, fp_config in cluster_config.fargate_profiles :
+        length(fp_config.subnet_ids) >= 1
+      ])
+    ])
+    error_message = "Fargate profiles must have at least 1 subnet."
+  }
+
+  validation {
+    condition = alltrue([
+      for cluster_name, cluster_config in var.eks_clusters :
+      alltrue([
+        for log_type in cluster_config.enabled_cluster_log_types :
+        contains(["api", "audit", "authenticator", "controllerManager", "scheduler"], log_type)
+      ])
+    ])
+    error_message = "Invalid cluster log type. Valid types are: api, audit, authenticator, controllerManager, scheduler."
+  }
 }

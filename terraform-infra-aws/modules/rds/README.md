@@ -1,665 +1,683 @@
-# RDS Terraform Module
+# RDS Module
+
+[![Terraform](https://img.shields.io/badge/terraform-%235835CC.svg?style=for-the-badge&logo=terraform&logoColor=white)](https://www.terraform.io/)
+[![AWS](https://img.shields.io/badge/AWS-%23FF9900.svg?style=for-the-badge&logo=amazon-aws&logoColor=white)](https://aws.amazon.com/)
 
 ## Overview
 
-This Terraform module creates **Amazon Relational Database Service (RDS)** instances with enterprise-grade features including automated backups, high availability, security, and performance optimization. The module supports multiple database engines and provides comprehensive configuration options for production workloads.
+This Terraform module creates and manages Amazon RDS (Relational Database Service) resources with comprehensive configuration options following AWS best practices and security guidelines. The module supports multiple database engines, high availability configurations, automated backups, security features, monitoring, and performance optimization.
 
 ## Features
 
-### 🗄️ **Database Engines Supported**
-- **MySQL** - Latest versions with InnoDB storage engine
-- **PostgreSQL** - Advanced open-source database with JSON support
-- **MariaDB** - MySQL-compatible with enhanced features
-- **Oracle** - Enterprise database with advanced features
-- **SQL Server** - Microsoft SQL Server with Windows authentication
-- **Aurora** - AWS-native database with MySQL/PostgreSQL compatibility
-
-### 🔒 **Security Features**
-- **Encryption at Rest**: AES-256 encryption with customer-managed KMS keys
-- **Encryption in Transit**: SSL/TLS encryption for database connections
-- **Network Isolation**: VPC deployment with private subnets
-- **IAM Integration**: Database authentication with IAM roles
-- **Parameter Groups**: Custom database configuration and security settings
-- **Secrets Manager**: Automatic password rotation and secure storage
-
-### 📈 **High Availability & Performance**
-- **Multi-AZ Deployment**: Automatic failover for high availability
-- **Read Replicas**: Scale read operations across multiple instances
-- **Performance Insights**: Advanced database performance monitoring
-- **Enhanced Monitoring**: Detailed CloudWatch metrics and logging
-- **Automated Backups**: Point-in-time recovery with customizable retention
-
-### 💰 **Cost Optimization**
-- **Storage Autoscaling**: Automatically increase storage when needed
-- **Reserved Instances**: Cost savings for predictable workloads
-- **Instance Right-Sizing**: Performance-based instance recommendations
-- **Storage Types**: Optimized storage options (gp2, gp3, io1, io2)
+- **Multiple Database Engines**: MySQL, PostgreSQL, Oracle, SQL Server, MariaDB, and Aurora (MySQL/PostgreSQL)
+- **High Availability**: Multi-AZ deployments, Aurora clusters with automatic failover
+- **Security**: Encryption at rest and in transit, VPC integration, IAM database authentication
+- **Automated Backups**: Point-in-time recovery, automated snapshots, cross-region backup replication
+- **Performance**: Performance Insights, Enhanced Monitoring, read replicas
+- **Scaling**: Aurora Serverless, storage auto-scaling, connection pooling with RDS Proxy
+- **Parameter Management**: Custom parameter groups and option groups
+- **Network Security**: VPC security groups, private subnets, SSL/TLS enforcement
+- **Monitoring**: CloudWatch integration, log exports, custom metrics and alarms
+- **Maintenance**: Automated maintenance windows, minor version upgrades
 
 ## Architecture
 
-### 🏗️ **RDS Architecture**
-
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                         VPC                                     │
+│                          RDS Module                             │
 ├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐ │
-│  │   App Subnet    │  │   App Subnet    │  │   App Subnet    │ │
-│  │    (AZ-1)       │  │    (AZ-2)       │  │    (AZ-3)       │ │
-│  │                 │  │                 │  │                 │ │
-│  │ ┌─────────────┐ │  │ ┌─────────────┐ │  │ ┌─────────────┐ │ │
-│  │ │    App      │ │  │ │    App      │ │  │ │    App      │ │ │
-│  │ │  Servers    │ │  │ │  Servers    │ │  │ │  Servers    │ │ │
-│  │ └─────────────┘ │  │ └─────────────┘ │  │ └─────────────┘ │ │
-│  └─────────────────┘  └─────────────────┘  └─────────────────┘ │
-│           │                      │                      │      │
-│           └──────────────────────┼──────────────────────┘      │
-│                                  │                             │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐ │
-│  │   DB Subnet     │  │   DB Subnet     │  │   DB Subnet     │ │
-│  │    (AZ-1)       │  │    (AZ-2)       │  │    (AZ-3)       │ │
-│  │                 │  │                 │  │                 │ │
-│  │ ┌─────────────┐ │  │ ┌─────────────┐ │  │ ┌─────────────┐ │ │
-│  │ │    RDS      │ │  │ │    RDS      │ │  │ │ Read Replica│ │ │
-│  │ │  Primary    │◄─┼──┼►│  Standby    │ │  │ │             │ │ │
-│  │ │             │ │  │ │  (Multi-AZ) │ │  │ │             │ │ │
-│  │ └─────────────┘ │  │ └─────────────┘ │  │ └─────────────┘ │ │
-│  └─────────────────┘  └─────────────────┘  └─────────────────┘ │
-│                                                                 │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │                 Database Backup                         │   │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐     │   │
-│  │  │  Automated  │  │   Manual    │  │    Point    │     │   │
-│  │  │   Backup    │  │ Snapshots   │  │  in Time    │     │   │
-│  │  └─────────────┘  └─────────────┘  └─────────────┘     │   │
-│  └─────────────────────────────────────────────────────────┘   │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  │
+│  │   RDS Instance  │  │  Aurora Cluster │  │   RDS Proxy     │  │
+│  │   (Single AZ)   │  │   (Multi-AZ)    │  │ (Connection     │  │
+│  │                 │  │                 │  │  Pooling)       │  │
+│  └─────────────────┘  └─────────────────┘  └─────────────────┘  │
+│  ┌─────────────────┐  ┌─────────────────┐                      │
+│  │   Multi-AZ RDS  │  │  Read Replicas  │                      │
+│  │   (Standby)     │  │  (Scaling)      │                      │
+│  └─────────────────┘  └─────────────────┘                      │
+├─────────────────────────────────────────────────────────────────┤
+│                     Supporting Resources                        │
+│  • DB Subnet Groups     • Parameter Groups                     │
+│  • Option Groups        • Security Groups                       │
+│  • KMS Encryption       • CloudWatch Logs                      │
+├─────────────────────────────────────────────────────────────────┤
+│                      Network & Security                         │
+│  • VPC Integration      • Private Subnets                      │
+│  • Security Groups      • IAM Roles & Policies                 │
+│  • SSL/TLS Encryption   • At-Rest Encryption                   │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### 📊 **Multi-AZ vs Read Replicas**
+## Usage
 
-#### **Multi-AZ Deployment**
-- **Purpose**: High availability and automatic failover
-- **Synchronization**: Synchronous replication to standby
-- **Failover**: Automatic failover (1-2 minutes)
-- **Use Case**: Production workloads requiring high availability
-
-#### **Read Replicas**
-- **Purpose**: Scale read operations and reduce primary load
-- **Synchronization**: Asynchronous replication
-- **Failover**: Manual promotion to primary
-- **Use Case**: Read-heavy workloads and reporting
-
-## Usage Examples
-
-### Basic MySQL Database
+### Basic MySQL Instance
 
 ```hcl
-module "mysql_db" {
-  source = "../../modules/rds"
+module "rds_mysql" {
+  source = "./modules/rds"
 
-  # Basic configuration
-  db_instance_identifier = "my-mysql-db"
-  engine                = "mysql"
-  engine_version        = "8.0.35"
-  instance_class        = "db.t3.micro"
+  name_prefix = "myapp"
 
-  # Storage configuration
-  allocated_storage     = 20
-  max_allocated_storage = 100
-  storage_type         = "gp3"
-  storage_encrypted    = true
+  # DB Subnet Group
+  db_subnet_groups = {
+    "main" = {
+      subnet_ids  = ["subnet-12345678", "subnet-87654321"]
+      description = "Main DB subnet group"
+    }
+  }
 
-  # Database configuration
-  db_name  = "myapp"
-  username = "admin"
+  # MySQL Instance
+  rds_instances = {
+    "mysql-primary" = {
+      allocated_storage     = 20
+      max_allocated_storage = 100
+      storage_type          = "gp3"
+      storage_encrypted     = true
+      
+      engine         = "mysql"
+      engine_version = "8.0.35"
+      instance_class = "db.t3.micro"
+      db_name        = "appdb"
+      username       = "admin"
+      
+      db_subnet_group_name   = "main"
+      vpc_security_group_ids = [module.security_groups.database_sg_id]
+      
+      multi_az               = true
+      backup_retention_period = 7
+      deletion_protection    = true
+      
+      performance_insights_enabled = true
+      enabled_cloudwatch_logs_exports = ["error", "general", "slow"]
+    }
+  }
 
-  # Network configuration
-  subnet_ids             = module.vpc.database_subnets
-  vpc_security_group_ids = [module.security_groups.database_sg_id]
+  tags = {
+    Environment = "production"
+    Project     = "my-application"
+  }
+}
+```
 
-  # Backup configuration
-  backup_retention_period = 7
-  backup_window          = "03:00-04:00"
-  maintenance_window     = "sun:04:00-sun:05:00"
+### Aurora PostgreSQL Cluster
 
-  # Deletion protection
-  deletion_protection = false  # Set to true for production
+```hcl
+module "rds_aurora" {
+  source = "./modules/rds"
+
+  name_prefix = "enterprise"
+
+  # DB Subnet Group
+  db_subnet_groups = {
+    "aurora" = {
+      subnet_ids  = ["subnet-12345678", "subnet-87654321", "subnet-11111111"]
+      description = "Aurora cluster subnet group"
+    }
+  }
+
+  # Cluster Parameter Group
+  rds_cluster_parameter_groups = {
+    "aurora-postgresql" = {
+      family = "aurora-postgresql15"
+      parameters = [
+        {
+          name  = "shared_preload_libraries"
+          value = "pg_stat_statements"
+        },
+        {
+          name  = "log_statement"
+          value = "all"
+        }
+      ]
+    }
+  }
+
+  # Aurora Cluster
+  rds_clusters = {
+    "postgresql-cluster" = {
+      engine              = "aurora-postgresql"
+      engine_version      = "15.4"
+      database_name       = "enterprisedb"
+      master_username     = "postgres"
+      
+      db_subnet_group_name            = "aurora"
+      db_cluster_parameter_group_name = "aurora-postgresql"
+      vpc_security_group_ids          = [module.security_groups.database_sg_id]
+      
+      storage_encrypted       = true
+      kms_key_id             = module.kms.key_arns["rds"]
+      backup_retention_period = 30
+      deletion_protection     = true
+      
+      enabled_cloudwatch_logs_exports = ["postgresql"]
+      
+      availability_zones = ["us-west-2a", "us-west-2b", "us-west-2c"]
+    }
+  }
+
+  # Cluster Instances
+  rds_cluster_instances = {
+    "writer" = {
+      cluster_identifier = "postgresql-cluster"
+      instance_class     = "db.r6g.large"
+      engine            = "aurora-postgresql"
+      
+      performance_insights_enabled = true
+      monitoring_interval          = 60
+      monitoring_role_arn         = module.iam.enhanced_monitoring_role_arn
+    },
+    "reader-1" = {
+      cluster_identifier = "postgresql-cluster"
+      instance_class     = "db.r6g.large"
+      engine            = "aurora-postgresql"
+      
+      performance_insights_enabled = true
+    }
+  }
+
+  tags = {
+    Environment = "production"
+    Project     = "enterprise-app"
+    Tier        = "database"
+  }
+}
+```
+
+### Enterprise Setup with RDS Proxy
+
+```hcl
+module "rds_enterprise" {
+  source = "./modules/rds"
+
+  name_prefix = "prod"
+
+  # DB Subnet Groups
+  db_subnet_groups = {
+    "primary" = {
+      subnet_ids  = ["subnet-12345678", "subnet-87654321"]
+      description = "Primary database subnet group"
+    }
+  }
+
+  # Parameter Groups
+  db_parameter_groups = {
+    "mysql-custom" = {
+      family = "mysql8.0"
+      parameters = [
+        {
+          name  = "innodb_buffer_pool_size"
+          value = "{DBInstanceClassMemory*3/4}"
+        },
+        {
+          name  = "max_connections"
+          value = "1000"
+        },
+        {
+          name  = "slow_query_log"
+          value = "1"
+        }
+      ]
+    }
+  }
+
+  # RDS Instance
+  rds_instances = {
+    "mysql-primary" = {
+      allocated_storage     = 500
+      max_allocated_storage = 1000
+      storage_type          = "gp3"
+      storage_encrypted     = true
+      kms_key_id           = module.kms.key_arns["rds"]
+      
+      engine         = "mysql"
+      engine_version = "8.0.35"
+      instance_class = "db.r5.xlarge"
+      db_name        = "proddb"
+      username       = "admin"
+      
+      db_subnet_group_name   = "primary"
+      parameter_group_name   = "mysql-custom"
+      vpc_security_group_ids = [module.security_groups.database_sg_id]
+      
+      multi_az                      = true
+      backup_retention_period       = 30
+      backup_window                = "03:00-04:00"
+      maintenance_window           = "sun:04:00-sun:05:00"
+      deletion_protection          = true
+      
+      performance_insights_enabled = true
+      performance_insights_retention_period = 93
+      monitoring_interval          = 60
+      monitoring_role_arn         = module.iam.enhanced_monitoring_role_arn
+      
+      enabled_cloudwatch_logs_exports = ["error", "general", "slow"]
+    }
+  }
+
+  # RDS Proxy for connection pooling
+  rds_proxies = {
+    "mysql-proxy" = {
+      engine_family = "MYSQL"
+      auth = [
+        {
+          auth_scheme = "SECRETS"
+          secret_arn  = aws_secretsmanager_secret.db_credentials.arn
+        }
+      ]
+      role_arn              = module.iam.rds_proxy_role_arn
+      vpc_subnet_ids        = ["subnet-12345678", "subnet-87654321"]
+      vpc_security_group_ids = [module.security_groups.rds_proxy_sg_id]
+      
+      require_tls = true
+      
+      connection_pool_config = {
+        max_connections_percent = 100
+        max_idle_connections_percent = 50
+        connection_borrow_timeout = 120
+      }
+      
+      targets = [
+        {
+          db_instance_identifier = "mysql-primary"
+        }
+      ]
+    }
+  }
+
+  tags = {
+    Environment = "production"
+    Project     = "enterprise-app"
+    Compliance  = "required"
+  }
+}
+```
+
+### Aurora Serverless for Development
+
+```hcl
+module "rds_dev" {
+  source = "./modules/rds"
+
+  name_prefix = "dev"
+
+  db_subnet_groups = {
+    "dev" = {
+      subnet_ids  = ["subnet-dev1", "subnet-dev2"]
+      description = "Development environment subnet group"
+    }
+  }
+
+  rds_clusters = {
+    "aurora-serverless" = {
+      engine         = "aurora-mysql"
+      engine_version = "5.7.mysql_aurora.2.10.1"
+      engine_mode   = "serverless"
+      database_name = "devdb"
+      
+      db_subnet_group_name   = "dev"
+      vpc_security_group_ids = [module.security_groups.database_sg_id]
+      
+      storage_encrypted       = true
+      backup_retention_period = 1
+      skip_final_snapshot    = true
+      
+      scaling_configuration = {
+        auto_pause               = true
+        max_capacity            = 2
+        min_capacity            = 1
+        seconds_until_auto_pause = 300
+      }
+    }
+  }
 
   tags = {
     Environment = "development"
-    Project     = "my-app"
+    AutoShutdown = "enabled"
   }
 }
 ```
 
-### Production PostgreSQL with High Availability
+### Multi-Region Setup with Cross-Region Backups
 
 ```hcl
-module "postgres_prod" {
-  source = "../../modules/rds"
-
-  # Production configuration
-  db_instance_identifier = "prod-postgres-db"
-  engine                = "postgres"
-  engine_version        = "15.4"
-  instance_class        = "db.r6g.xlarge"  # Performance optimized
-
-  # High availability
-  multi_az = true  # Enable Multi-AZ for automatic failover
-
-  # Storage configuration
-  allocated_storage     = 100
-  max_allocated_storage = 1000
-  storage_type         = "gp3"
-  storage_encrypted    = true
-  kms_key_id           = module.kms.database_key_arn
-
-  # Database configuration
-  db_name  = "production_db"
-  username = "postgres_admin"
-
-  # Network and security
-  subnet_ids             = module.vpc.database_subnets
-  vpc_security_group_ids = [module.security_groups.database_sg_id]
-  db_subnet_group_name   = "prod-db-subnet-group"
-
-  # Backup and maintenance
-  backup_retention_period   = 30  # 30 days for production
-  backup_window            = "03:00-04:00"
-  maintenance_window       = "sun:04:00-sun:06:00"
-  copy_tags_to_snapshot    = true
-
-  # Monitoring and performance
-  monitoring_interval                 = 60
-  monitoring_role_arn                = module.iam.rds_enhanced_monitoring_role_arn
-  performance_insights_enabled       = true
-  performance_insights_retention_period = 7
-  enabled_cloudwatch_logs_exports    = ["postgresql"]
-
-  # Security and compliance
-  deletion_protection = true
-  skip_final_snapshot = false
-  final_snapshot_identifier = "prod-postgres-final-snapshot"
-
-  # Parameter group for performance tuning
-  parameter_group_name = aws_db_parameter_group.postgres_prod.name
-
-  tags = {
-    Environment = "production"
-    Project     = "my-app"
-    Backup      = "required"
-    Compliance  = "SOC2"
-  }
-}
-
-# Custom parameter group for PostgreSQL optimization
-resource "aws_db_parameter_group" "postgres_prod" {
-  family = "postgres15"
-  name   = "prod-postgres-params"
-
-  parameter {
-    name  = "shared_preload_libraries"
-    value = "pg_stat_statements"
-  }
-
-  parameter {
-    name  = "log_statement"
-    value = "all"
-  }
-
-  parameter {
-name  = "log_min_duration_statement"
-    value = "1000"  # Log queries taking more than 1 second
-  }
-
-  tags = {
-    Environment = "production"
-  }
-}
-```
-
-### MySQL with Read Replicas
-
-```hcl
-# Primary MySQL database
-module "mysql_primary" {
-  source = "../../modules/rds"
-
-  db_instance_identifier = "mysql-primary"
-  engine                = "mysql"
-  engine_version        = "8.0.35"
-  instance_class        = "db.r6g.large"
-
-  # Enable automated backups (required for read replicas)
-  backup_retention_period = 7
+# Primary region RDS
+module "rds_primary" {
+  source = "./modules/rds"
   
-  # Other configuration...
-  
-  tags = {
-    Role = "primary"
+  providers = {
+    aws = aws.primary
   }
-}
 
-# Read replica for scaling read operations
-module "mysql_read_replica" {
-  source = "../../modules/rds"
+  name_prefix = "primary"
 
-  create_db_instance     = true
-  create_db_subnet_group = false  # Use existing subnet group
-
-  db_instance_identifier = "mysql-read-replica"
-  replicate_source_db    = module.mysql_primary.db_instance_id
-  instance_class         = "db.r6g.large"
-
-  # Read replica specific settings
-  auto_minor_version_upgrade = false
-  backup_retention_period   = 0  # Read replicas don't need backups
-
-  # Can be in different AZ or region
-  availability_zone = "us-east-1c"
-
-  tags = {
-    Role = "read-replica"
+  db_subnet_groups = {
+    "primary" = {
+      subnet_ids = ["subnet-primary-1", "subnet-primary-2"]
+    }
   }
-}
-```
 
-### Development Database (Cost-Optimized)
-
-```hcl
-module "dev_database" {
-  source = "../../modules/rds"
-
-  # Minimal configuration for development
-  db_instance_identifier = "dev-mysql-db"
-  engine                = "mysql"
-  engine_version        = "8.0.35"
-  instance_class        = "db.t3.micro"  # Smallest instance
-
-  # Minimal storage
-  allocated_storage     = 20
-  max_allocated_storage = 50
-  storage_type         = "gp2"  # Standard SSD
-  storage_encrypted    = false  # Optional for development
-
-  # Database settings
-  db_name  = "devdb"
-  username = "dev_user"
-
-  # Network configuration
-  subnet_ids             = module.vpc.database_subnets
-  vpc_security_group_ids = [module.security_groups.database_sg_id]
-
-  # Minimal backup (cost optimization)
-  backup_retention_period = 1  # 1 day only
-  backup_window          = "07:00-08:00"
-  maintenance_window     = "sun:08:00-sun:09:00"
-
-  # Development settings
-  deletion_protection       = false
-  skip_final_snapshot      = true
-  apply_immediately        = true
-  auto_minor_version_upgrade = true
-
-  tags = {
-    Environment = "development"
-    CostOptimized = "true"
-  }
-}
-```
-
-### Oracle Enterprise Database
-
-```hcl
-module "oracle_enterprise" {
-  source = "../../modules/rds"
-
-  # Oracle configuration
-  db_instance_identifier = "oracle-enterprise-db"
-  engine                = "oracle-ee"
-  engine_version        = "19.0.0.0.ru-2023-07.rur-2023-07.r1"
-  instance_class        = "db.r5.2xlarge"  # Oracle requires larger instances
-
-  # License model
-  license_model = "bring-your-own-license"
-
-  # Storage configuration
-  allocated_storage     = 100
-  max_allocated_storage = 500
-  storage_type         = "io1"  # Provisioned IOPS for Oracle
-  iops                 = 3000
-  storage_encrypted    = true
-
-  # Database configuration
-  db_name  = "ORCL"
-  username = "oracle_admin"
-
-  # Oracle-specific settings
-  character_set_name       = "AL32UTF8"
-  national_character_set_name = "AL16UTF16"
-  timezone                = "UTC"
-
-  # High availability
-  multi_az = true
-
-  # Network and security
-  subnet_ids             = module.vpc.database_subnets
-  vpc_security_group_ids = [module.security_groups.oracle_sg_id]
-
-  # Backup configuration
-  backup_retention_period = 35  # Extended retention for Oracle
-  backup_window          = "03:00-05:00"
-  maintenance_window     = "sun:05:00-sun:07:00"
-
-  # Monitoring
-  monitoring_interval = 60
-  performance_insights_enabled = true
-
-  # Security
-  deletion_protection = true
-
-  tags = {
-    Environment = "production"
-    Database    = "oracle"
-    License     = "enterprise"
-  }
-}
-```
-
-### SQL Server with Windows Authentication
-
-```hcl
-module "sql_server" {
-  source = "../../modules/rds"
-
-  # SQL Server configuration
-  db_instance_identifier = "sqlserver-prod"
-  engine                = "sqlserver-ex"  # Express edition
-  engine_version        = "15.00.4316.3.v1"
-  instance_class        = "db.t3.small"
-
-  # License model
-  license_model = "license-included"
-
-  # Storage
-  allocated_storage = 20
-  max_allocated_storage = 100
-  storage_type     = "gp2"
-  storage_encrypted = true
-
-  # Database settings
-  username = "sa"
-  
-  # SQL Server specific
-  character_set_name = "SQL_Latin1_General_CP1_CI_AS"
-  timezone          = "UTC"
-
-  # Network configuration
-  subnet_ids             = module.vpc.database_subnets
-  vpc_security_group_ids = [module.security_groups.sqlserver_sg_id]
-
-  # Backup settings
-  backup_retention_period = 7
-  backup_window          = "04:00-05:00"
-  maintenance_window     = "sun:05:00-sun:06:00"
-
-  # Windows Authentication Domain (optional)
-  domain               = "corp.example.com"
-  domain_iam_role_name = "rds-directoryservice-role"
-
-  tags = {
-    Environment = "production"
-    Database    = "sqlserver"
-  }
-}
-```
-
-## Configuration Options
-
-### Required Variables
-
-| Variable | Type | Description |
-|----------|------|-------------|
-| `db_instance_identifier` | `string` | Unique identifier for the DB instance |
-| `engine` | `string` | Database engine (mysql, postgres, etc.) |
-| `instance_class` | `string` | RDS instance class (db.t3.micro, etc.) |
-
-### Database Configuration
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `engine_version` | `string` | `"8.0"` | Database engine version |
-| `allocated_storage` | `number` | `20` | Initial storage allocation (GB) |
-| `max_allocated_storage` | `number` | `100` | Maximum storage for autoscaling (GB) |
-| `storage_type` | `string` | `"gp2"` | Storage type (gp2, gp3, io1, io2) |
-| `storage_encrypted` | `bool` | `false` | Enable storage encryption |
-| `db_name` | `string` | `null` | Initial database name |
-| `username` | `string` | `"admin"` | Master username |
-
-### High Availability
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `multi_az` | `bool` | `false` | Enable Multi-AZ deployment |
-| `availability_zone` | `string` | `null` | Specific AZ for single-AZ deployment |
-| `replicate_source_db` | `string` | `null` | Source DB for read replica |
-
-### Backup & Maintenance
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `backup_retention_period` | `number` | `0` | Backup retention in days (0-35) |
-| `backup_window` | `string` | `null` | Daily backup window (UTC) |
-| `maintenance_window` | `string` | `null` | Weekly maintenance window |
-| `copy_tags_to_snapshot` | `bool` | `false` | Copy tags to snapshots |
-
-### Security
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `vpc_security_group_ids` | `list(string)` | `[]` | Security group IDs |
-| `kms_key_id` | `string` | `null` | KMS key ID for encryption |
-| `deletion_protection` | `bool` | `false` | Enable deletion protection |
-| `publicly_accessible` | `bool` | `false` | Make DB publicly accessible |
-
-### Monitoring
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `monitoring_interval` | `number` | `0` | Enhanced monitoring interval (0, 1, 5, 10, 15, 30, 60) |
-| `monitoring_role_arn` | `string` | `null` | IAM role for enhanced monitoring |
-| `performance_insights_enabled` | `bool` | `false` | Enable Performance Insights |
-| `enabled_cloudwatch_logs_exports` | `list(string)` | `[]` | Log types to export to CloudWatch |
-
-## Outputs
-
-### Database Connection
-
-| Output | Description |
-|--------|-------------|
-| `db_instance_id` | RDS instance identifier |
-| `db_instance_arn` | RDS instance ARN |
-| `db_instance_endpoint` | RDS instance connection endpoint |
-| `db_instance_hosted_zone_id` | Route 53 hosted zone ID |
-| `db_instance_port` | Database port number |
-
-### Database Information
-
-| Output | Description |
-|--------|-------------|
-| `db_instance_name` | Database name |
-| `db_instance_username` | Master username |
-| `db_instance_engine` | Database engine |
-| `db_instance_engine_version` | Database engine version |
-| `db_instance_class` | Database instance class |
-
-### Network & Security
-
-| Output | Description |
-|--------|-------------|
-| `db_subnet_group_id` | Database subnet group identifier |
-| `db_subnet_group_arn` | Database subnet group ARN |
-| `db_instance_availability_zone` | Availability zone of the instance |
-
-## Best Practices
-
-### 🔒 **Security Best Practices**
-
-1. **Network Security**
-   - Deploy RDS in private subnets only
-   - Use security groups to restrict database access to application tiers
-   - Enable VPC Flow Logs to monitor network traffic
-
-2. **Encryption**
-   - Enable encryption at rest for all production databases
-   - Use customer-managed KMS keys for additional control
-   - Enable encryption in transit with SSL/TLS certificates
-
-3. **Access Control**
-   - Use IAM database authentication where supported
-   - Implement least-privilege access principles
-   - Regularly rotate database passwords using Secrets Manager
-
-4. **Monitoring & Auditing**
-   - Enable database activity streams for audit compliance
-   - Export database logs to CloudWatch for centralized monitoring
-   - Set up CloudWatch alarms for critical metrics
-
-### ⚡ **Performance Best Practices**
-
-1. **Instance Sizing**
-   - Monitor CPU, memory, and I/O utilization regularly
-   - Use Performance Insights to identify performance bottlenecks
-   - Right-size instances based on actual workload patterns
-
-2. **Storage Optimization**
-   - Use gp3 storage for better performance and cost efficiency
-   - Enable storage autoscaling to handle growth automatically
-   - Consider Provisioned IOPS (io1/io2) for I/O intensive workloads
-
-3. **Connection Management**
-   - Implement connection pooling in applications
-   - Monitor database connections and configure appropriate limits
-   - Use read replicas to distribute read workload
-
-### 💰 **Cost Optimization**
-
-1. **Instance Management**
-   - **Development**: Use smaller instances (db.t3.micro, db.t3.small)
-   - **Production**: Consider Reserved Instances for predictable workloads
-   - **Staging**: Use Aurora Serverless for variable workloads
-
-2. **Storage Optimization**
-   - Enable storage autoscaling to avoid over-provisioning
-   - Use gp3 storage for better price-performance ratio
-   - Implement automated snapshot cleanup policies
-
-3. **Backup Strategy**
-   - Set appropriate backup retention periods (7-30 days typical)
-   - Use cross-region backups only when required for compliance
-   - Monitor backup storage costs and optimize retention policies
-
-### 📈 **High Availability Best Practices**
-
-1. **Multi-AZ Deployment**
-   - Enable Multi-AZ for production databases
-   - Test failover procedures regularly
-   - Monitor failover metrics and RTO/RPO
-
-2. **Read Replicas**
-   - Use read replicas to scale read operations
-   - Place read replicas in different AZs or regions
-   - Monitor replication lag and performance
-
-3. **Backup & Recovery**
-   - Test backup restoration procedures regularly
-   - Implement point-in-time recovery for critical databases
-   - Document recovery procedures and RTO/RPO requirements
-
-## Integration Examples
-
-### Application Integration
-
-```python
-# Python application connection example
-import pymysql
-import boto3
-from botocore.exceptions import ClientError
-
-def get_secret_value(secret_name, region_name="us-east-1"):
-    session = boto3.session.Session()
-    client = session.client(
-        service_name='secretsmanager',
-        region_name=region_name
-    )
-    
-    try:
-        get_secret_value_response = client.get_secret_value(
-            SecretId=secret_name
-        )
-    except ClientError as e:
-        raise e
-    
-    return get_secret_value_response['SecretString']
-
-def connect_to_rds():
-    # Get database credentials from Secrets Manager
-    secret = json.loads(get_secret_value("prod/mysql/credentials"))
-    
-    connection = pymysql.connect(
-        host=secret['host'],
-        user=secret['username'],
-        password=secret['password'],
-        database=secret['dbname'],
-        port=secret['port'],
-        ssl={'ssl_ca': '/opt/rds-ca-2019-root.pem'},
-        ssl_verify_cert=True,
-        ssl_verify_identity=True
-    )
-    
-    return connection
-```
-
-### Backup Automation
-
-```hcl
-# Lambda function for automated snapshots
-resource "aws_lambda_function" "db_snapshot" {
-  filename         = "db_snapshot.zip"
-  function_name    = "rds-automated-snapshot"
-  role            = aws_iam_role.lambda_role.arn
-  handler         = "lambda_function.lambda_handler"
-  runtime         = "python3.11"
-
-  environment {
-    variables = {
-      DB_INSTANCE_ID = module.mysql_db.db_instance_id
+  rds_instances = {
+    "mysql-primary" = {
+      allocated_storage   = 100
+      engine             = "mysql"
+      engine_version     = "8.0.35"
+      instance_class     = "db.r5.large"
+      
+      multi_az           = true
+      storage_encrypted  = true
+      
+      backup_retention_period = 35
+      copy_tags_to_snapshot  = true
+      
+      # Cross-region automated backups
+      backup_window = "03:00-04:00"
     }
   }
 }
 
-# CloudWatch Event Rule for daily snapshots
-resource "aws_cloudwatch_event_rule" "daily_snapshot" {
-  name                = "daily-db-snapshot"
-  description         = "Trigger daily RDS snapshot"
-  schedule_expression = "cron(0 2 * * ? *)"  # Daily at 2 AM UTC
-}
+# Disaster recovery region
+module "rds_dr" {
+  source = "./modules/rds"
+  
+  providers = {
+    aws = aws.dr_region
+  }
 
-resource "aws_cloudwatch_event_target" "lambda_target" {
-  rule      = aws_cloudwatch_event_rule.daily_snapshot.name
-  target_id = "TriggerLambda"
-  arn       = aws_lambda_function.db_snapshot.arn
+  name_prefix = "dr"
+
+  # Read replica for disaster recovery
+  rds_instances = {
+    "mysql-replica" = {
+      replicate_source_db = module.rds_primary.rds_instance_arns["mysql-primary"]
+      instance_class      = "db.r5.large"
+      
+      storage_encrypted   = true
+      kms_key_id         = module.kms_dr.key_arns["rds"]
+      
+      backup_retention_period = 7
+      skip_final_snapshot    = false
+      final_snapshot_identifier = "mysql-replica-final-snapshot"
+    }
+  }
 }
 ```
 
-### Monitoring Setup
+## Requirements
 
+| Name | Version |
+|------|---------|
+| terraform | >= 1.9.0 |
+| aws | ~> 5.0 |
+
+## Providers
+
+| Name | Version |
+|------|---------|
+| aws | ~> 5.0 |
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+|------|-------------|------|---------|----------|
+| name_prefix | Name prefix for RDS resources | `string` | `"app"` | no |
+| tags | A map of tags to assign to RDS resources | `map(string)` | `{}` | no |
+| db_subnet_groups | Map of DB subnet groups to create | `map(object)` | `{}` | no |
+| db_parameter_groups | Map of DB parameter groups to create | `map(object)` | `{}` | no |
+| db_option_groups | Map of DB option groups to create | `map(object)` | `{}` | no |
+| rds_cluster_parameter_groups | Map of RDS cluster parameter groups to create | `map(object)` | `{}` | no |
+| rds_instances | Map of RDS instances to create | `map(object)` | `{}` | no |
+| rds_clusters | Map of RDS clusters to create | `map(object)` | `{}` | no |
+| rds_cluster_instances | Map of RDS cluster instances to create | `map(object)` | `{}` | no |
+| rds_proxies | Map of RDS proxies to create | `map(object)` | `{}` | no |
+
+### RDS Instance Configuration Options
+
+Each RDS instance in the `rds_instances` map supports the following configuration options:
+
+| Parameter | Description | Type | Default |
+|-----------|-------------|------|---------|
+| `allocated_storage` | Initial storage allocation in GB | `number` | Required |
+| `max_allocated_storage` | Maximum storage for auto-scaling | `number` | `null` |
+| `storage_type` | Storage type (gp2, gp3, io1, io2) | `string` | `"gp3"` |
+| `storage_encrypted` | Enable storage encryption | `bool` | `true` |
+| `engine` | Database engine | `string` | Required |
+| `engine_version` | Database engine version | `string` | `null` |
+| `instance_class` | RDS instance class | `string` | Required |
+| `multi_az` | Enable Multi-AZ deployment | `bool` | `false` |
+| `backup_retention_period` | Backup retention period in days | `number` | `7` |
+| `performance_insights_enabled` | Enable Performance Insights | `bool` | `false` |
+| `deletion_protection` | Enable deletion protection | `bool` | `true` |
+
+## Outputs
+
+| Name | Description |
+|------|-------------|
+| rds_instances | Map of RDS instance information |
+| rds_instance_endpoints | RDS instance endpoints |
+| rds_instance_arns | RDS instance ARNs |
+| rds_clusters | Map of RDS cluster information |
+| rds_cluster_endpoints | RDS cluster endpoints |
+| rds_cluster_reader_endpoints | RDS cluster reader endpoints |
+| rds_proxies | Map of RDS proxy information |
+| rds_proxy_endpoints | RDS proxy endpoints |
+| connection_info | Connection information for all RDS resources |
+
+## Supported Database Engines
+
+### RDS Instances
+- **MySQL**: 5.7, 8.0
+- **PostgreSQL**: 11, 12, 13, 14, 15, 16
+- **MariaDB**: 10.3, 10.4, 10.5, 10.6, 10.11
+- **Oracle**: SE2, EE (12c, 19c, 21c)
+- **SQL Server**: Express, Web, Standard, Enterprise (2017, 2019, 2022)
+
+### Aurora Clusters
+- **Aurora MySQL**: 5.7, 8.0 compatible
+- **Aurora PostgreSQL**: 11, 12, 13, 14, 15, 16 compatible
+
+## Security Best Practices
+
+### 1. Network Security
+- **VPC Integration**: All databases deployed in private subnets
+- **Security Groups**: Restrictive security group rules
+- **SSL/TLS**: Encrypted connections enforced by default
+- **Private Access**: No public accessibility by default
+
+### 2. Encryption
+- **At-Rest**: KMS encryption enabled by default
+- **In-Transit**: SSL/TLS connections required
+- **Key Management**: Customer-managed KMS keys supported
+- **Backup Encryption**: Encrypted backups and snapshots
+
+### 3. Access Control
+- **IAM Integration**: IAM database authentication support
+- **Master User Management**: AWS-managed master user passwords
+- **Secrets Management**: Integration with AWS Secrets Manager
+- **Principle of Least Privilege**: Minimal required permissions
+
+### 4. Monitoring and Auditing
+- **CloudTrail**: API call logging enabled
+- **Performance Insights**: Query-level performance monitoring
+- **CloudWatch Logs**: Database log exports to CloudWatch
+- **Enhanced Monitoring**: OS-level metrics collection
+
+## High Availability Patterns
+
+### 1. Multi-AZ Deployment
 ```hcl
-# CloudWatch Alarms
+rds_instances = {
+  "highly-available" = {
+    multi_az = true
+    backup_retention_period = 30
+    deletion_protection = true
+  }
+}
+```
+
+### 2. Aurora Cluster with Multiple Instances
+```hcl
+rds_clusters = {
+  "aurora-ha" = {
+    availability_zones = ["us-west-2a", "us-west-2b", "us-west-2c"]
+  }
+}
+
+rds_cluster_instances = {
+  "writer" = {
+    cluster_identifier = "aurora-ha"
+    instance_class = "db.r6g.large"
+  }
+  "reader-1" = {
+    cluster_identifier = "aurora-ha"
+    instance_class = "db.r6g.large"
+  }
+  "reader-2" = {
+    cluster_identifier = "aurora-ha"
+    instance_class = "db.r6g.large"
+  }
+}
+```
+
+### 3. Cross-Region Read Replicas
+```hcl
+# Primary instance
+rds_instances = {
+  "primary" = {
+    engine = "mysql"
+    backup_retention_period = 7
+  }
+}
+
+# Read replica in different region
+rds_instances = {
+  "cross-region-replica" = {
+    replicate_source_db = "arn:aws:rds:us-west-2:123456789012:db:primary"
+    instance_class = "db.t3.medium"
+  }
+}
+```
+
+## Performance Optimization
+
+### 1. Parameter Tuning
+```hcl
+db_parameter_groups = {
+  "performance-tuned" = {
+    family = "mysql8.0"
+    parameters = [
+      {
+        name = "innodb_buffer_pool_size"
+        value = "{DBInstanceClassMemory*3/4}"
+      },
+      {
+        name = "innodb_log_file_size"
+        value = "268435456"  # 256MB
+      },
+      {
+        name = "max_connections"
+        value = "1000"
+      }
+    ]
+  }
+}
+```
+
+### 2. Storage Optimization
+```hcl
+rds_instances = {
+  "performance-optimized" = {
+    storage_type = "gp3"
+    iops = 3000
+    storage_throughput = 125
+    max_allocated_storage = 1000  # Auto-scaling
+  }
+}
+```
+
+### 3. Connection Pooling
+```hcl
+rds_proxies = {
+  "connection-pool" = {
+    connection_pool_config = {
+      max_connections_percent = 100
+      max_idle_connections_percent = 50
+      connection_borrow_timeout = 120
+    }
+  }
+}
+```
+
+## Cost Optimization
+
+### 1. Aurora Serverless for Variable Workloads
+```hcl
+rds_clusters = {
+  "cost-optimized" = {
+    engine_mode = "serverless"
+    scaling_configuration = {
+      auto_pause = true
+      max_capacity = 2
+      min_capacity = 1
+      seconds_until_auto_pause = 300
+    }
+  }
+}
+```
+
+### 2. Storage Auto-Scaling
+```hcl
+rds_instances = {
+  "auto-scaling" = {
+    allocated_storage = 20      # Start small
+    max_allocated_storage = 100  # Scale as needed
+    storage_type = "gp3"        # Cost-effective storage
+  }
+}
+```
+
+### 3. Development Environment Optimization
+```hcl
+rds_instances = {
+  "development" = {
+    instance_class = "db.t3.micro"
+    allocated_storage = 20
+    backup_retention_period = 1
+    skip_final_snapshot = true
+    deletion_protection = false
+  }
+}
+```
+
+## Monitoring and Alerting
+
+### 1. Performance Insights
+```hcl
+rds_instances = {
+  "monitored" = {
+    performance_insights_enabled = true
+    performance_insights_retention_period = 93  # 3 months
+    monitoring_interval = 60
+    monitoring_role_arn = aws_iam_role.enhanced_monitoring.arn
+  }
+}
+```
+
+### 2. CloudWatch Log Exports
+```hcl
+# MySQL
+enabled_cloudwatch_logs_exports = ["error", "general", "slow"]
+
+# PostgreSQL
+enabled_cloudwatch_logs_exports = ["postgresql"]
+
+# Aurora MySQL
+enabled_cloudwatch_logs_exports = ["audit", "error", "general", "slowquery"]
+```
+
+### 3. CloudWatch Alarms Example
+```hcl
 resource "aws_cloudwatch_metric_alarm" "database_cpu" {
-  alarm_name          = "rds-high-cpu"
+  alarm_name          = "rds-high-cpu-${each.key}"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = "2"
   metric_name         = "CPUUtilization"
@@ -667,28 +685,117 @@ resource "aws_cloudwatch_metric_alarm" "database_cpu" {
   period              = "300"
   statistic           = "Average"
   threshold           = "80"
-  alarm_description   = "This metric monitors RDS cpu utilization"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
-
+  alarm_description   = "This metric monitors RDS CPU utilization"
+  
   dimensions = {
-    DBInstanceIdentifier = module.mysql_db.db_instance_id
+    DBInstanceIdentifier = module.rds.rds_instance_ids[each.key]
+  }
+  
+  alarm_actions = [aws_sns_topic.alerts.arn]
+}
+```
+
+## Backup and Recovery
+
+### 1. Automated Backups
+```hcl
+rds_instances = {
+  "production" = {
+    backup_retention_period = 30        # 30 days retention
+    backup_window = "03:00-04:00"      # Low-traffic window
+    copy_tags_to_snapshot = true
+    delete_automated_backups = false
   }
 }
+```
 
-resource "aws_cloudwatch_metric_alarm" "database_connections" {
-  alarm_name          = "rds-high-connections"
-  comparison_operator = "GreaterThanThreshold"
-  evaluation_periods  = "2"
-  metric_name         = "DatabaseConnections"
-  namespace           = "AWS/RDS"
-  period              = "300"
-  statistic           = "Average"
-  threshold           = "80"
-  alarm_description   = "This metric monitors RDS connection count"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
+### 2. Final Snapshots
+```hcl
+rds_instances = {
+  "important-data" = {
+    skip_final_snapshot = false
+    final_snapshot_identifier = "final-snapshot-${timestamp()}"
+    deletion_protection = true
+  }
+}
+```
 
-  dimensions = {
-    DBInstanceIdentifier = module.mysql_db.db_instance_id
+### 3. Cross-Region Backup Replication
+```hcl
+# Enable automated backups in primary region
+backup_retention_period = 35
+
+# Create read replica in different region for DR
+rds_instances = {
+  "dr-replica" = {
+    replicate_source_db = module.primary_rds.rds_instance_arns["primary"]
+    backup_retention_period = 7
+  }
+}
+```
+
+## Maintenance and Updates
+
+### 1. Maintenance Windows
+```hcl
+rds_instances = {
+  "production" = {
+    maintenance_window = "sun:04:00-sun:05:00"  # Sunday 4-5 AM UTC
+    auto_minor_version_upgrade = true
+    allow_major_version_upgrade = false
+    apply_immediately = false
+  }
+}
+```
+
+### 2. Parameter Group Changes
+```hcl
+db_parameter_groups = {
+  "custom" = {
+    parameters = [
+      {
+        name = "slow_query_log"
+        value = "1"
+        apply_method = "immediate"  # or "pending-reboot"
+      }
+    ]
+  }
+}
+```
+
+## Compliance and Governance
+
+### 1. Encryption Requirements
+```hcl
+# All databases encrypted with customer-managed keys
+storage_encrypted = true
+kms_key_id = module.kms.key_arns["rds"]
+
+# Backup encryption
+copy_tags_to_snapshot = true
+```
+
+### 2. Tagging Strategy
+```hcl
+tags = {
+  Environment     = "production"
+  Project         = "enterprise-app"
+  Owner          = "database-team"
+  CostCenter     = "engineering"
+  DataClass      = "confidential"
+  Compliance     = "sox-pci"
+  BackupRequired = "true"
+  RetentionDays  = "2555"  # 7 years
+}
+```
+
+### 3. Deletion Protection
+```hcl
+rds_instances = {
+  "critical-data" = {
+    deletion_protection = true
+    skip_final_snapshot = false
+    final_snapshot_identifier = "critical-data-final-${timestamp()}"
   }
 }
 ```
@@ -697,69 +804,195 @@ resource "aws_cloudwatch_metric_alarm" "database_connections" {
 
 ### Common Issues
 
-#### **Connection Problems**
+#### 1. Connection Timeouts
+```
+Error: Could not connect to database
+```
+**Solutions**:
+- Check security group rules allow database port
+- Verify subnet routing and NACLs
+- Ensure RDS instance is in correct subnet group
+- Check if RDS Proxy is needed for connection pooling
+
+#### 2. Performance Issues
+```
+Slow query performance
+```
+**Solutions**:
+- Enable Performance Insights for query analysis
+- Review and tune parameter group settings
+- Consider read replicas for read-heavy workloads
+- Upgrade instance class if CPU/memory constrained
+
+#### 3. Backup Failures
+```
+Backup window conflicts with maintenance window
+```
+**Solutions**:
+- Ensure backup window doesn't overlap with maintenance window
+- Verify sufficient storage space for backups
+- Check IAM permissions for backup operations
+
+#### 4. Encryption Key Issues
+```
+Error: KMS key not found or access denied
+```
+**Solutions**:
+- Verify KMS key exists and is active
+- Check IAM permissions for KMS key usage
+- Ensure key policy allows RDS service access
+
+### Debugging Commands
+
 ```bash
-# Test database connectivity
-mysql -h mydb.cluster-xyz.us-east-1.rds.amazonaws.com -u admin -p
+# Check RDS instance status
+aws rds describe-db-instances --db-instance-identifier instance-name
 
-# Check security group rules
-aws ec2 describe-security-groups --group-ids sg-xxx
+# Monitor RDS events
+aws rds describe-events --source-identifier instance-name --source-type db-instance
 
-# Verify subnet group configuration
-aws rds describe-db-subnet-groups --db-subnet-group-name mydb-subnet-group
+# Check parameter group parameters
+aws rds describe-db-parameters --db-parameter-group-name group-name
+
+# View cluster status (Aurora)
+aws rds describe-db-clusters --db-cluster-identifier cluster-name
+
+# Check proxy status
+aws rds describe-db-proxies --db-proxy-name proxy-name
+
+# Monitor performance insights
+aws pi get-resource-metrics --service-type RDS --identifier resource-id
 ```
 
-#### **Performance Issues**
-```bash
-# Check Performance Insights
-aws rds describe-db-instances --db-instance-identifier mydb
+## Migration Strategies
 
-# Monitor key metrics
-aws cloudwatch get-metric-statistics \
-  --namespace AWS/RDS \
-  --metric-name CPUUtilization \
-  --dimensions Name=DBInstanceIdentifier,Value=mydb \
-  --start-time 2024-01-01T00:00:00Z \
-  --end-time 2024-01-01T23:59:59Z \
-  --period 3600 \
-  --statistics Average
+### 1. MySQL to Aurora MySQL Migration
+```hcl
+# Step 1: Create Aurora cluster
+rds_clusters = {
+  "aurora-target" = {
+    engine = "aurora-mysql"
+    database_name = var.source_db_name
+    storage_encrypted = true
+  }
+}
+
+# Step 2: Create read replica from MySQL to Aurora
+# Use AWS DMS or native replication
 ```
 
-#### **Backup and Recovery**
+### 2. On-Premises to RDS Migration
 ```bash
-# List available snapshots
-aws rds describe-db-snapshots --db-instance-identifier mydb
-
-# Create manual snapshot
-aws rds create-db-snapshot \
-  --db-instance-identifier mydb \
-  --db-snapshot-identifier mydb-manual-snapshot-$(date +%Y%m%d)
-
-# Restore from snapshot
-aws rds restore-db-instance-from-db-snapshot \
-  --db-instance-identifier mydb-restored \
-  --db-snapshot-identifier mydb-snapshot-20240101
+# Using AWS Database Migration Service (DMS)
+# 1. Create replication instance
+# 2. Create source and target endpoints
+# 3. Create replication task
+# 4. Monitor migration progress
 ```
 
-## Requirements
+### 3. Cross-Region Migration
+```hcl
+# Create cross-region read replica
+rds_instances = {
+  "migration-replica" = {
+    replicate_source_db = "arn:aws:rds:source-region:account:db:source-instance"
+    storage_encrypted = true
+    kms_key_id = module.target_kms.key_arn
+  }
+}
+```
 
-- **Terraform**: >= 1.9.0
-- **AWS Provider**: ~> 5.80
-- **Minimum Permissions**: RDS management, VPC access, KMS (if using encryption)
+## Integration Examples
 
-## Related Documentation
+### Application Configuration
+```yaml
+# Database configuration for applications
+database:
+  host: ${module.rds.rds_instance_endpoints["mysql-primary"]}
+  port: 3306
+  name: appdb
+  ssl_mode: require
+  
+  # Use RDS Proxy for connection pooling
+  proxy_endpoint: ${module.rds.rds_proxy_endpoints["mysql-proxy"]}
+```
 
-- [Amazon RDS User Guide](https://docs.aws.amazon.com/rds/latest/userguide/)
-- [RDS Performance Best Practices](https://docs.aws.amazon.com/rds/latest/userguide/CHAP_BestPractices.html)
-- [RDS Security Best Practices](https://docs.aws.amazon.com/rds/latest/userguide/CHAP_BestPractices.Security.html)
-- [Performance Insights](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_PerfInsights.html)
+### Lambda Function Integration
+```hcl
+resource "aws_lambda_function" "db_function" {
+  vpc_config {
+    subnet_ids = var.private_subnet_ids
+    security_group_ids = [
+      module.security_groups.lambda_sg_id
+    ]
+  }
+  
+  environment {
+    variables = {
+      DB_HOST = module.rds.rds_instance_endpoints["mysql-primary"]
+      DB_PORT = module.rds.rds_instance_ports["mysql-primary"]
+    }
+  }
+}
+```
+
+### ECS Service Integration
+```hcl
+resource "aws_ecs_service" "app" {
+  task_definition = aws_ecs_task_definition.app.arn
+  
+  # Environment variables for database connection
+  # Passed through task definition
+}
+
+resource "aws_ecs_task_definition" "app" {
+  container_definitions = jsonencode([
+    {
+      name = "app"
+      environment = [
+        {
+          name = "DB_HOST"
+          value = module.rds.rds_proxy_endpoints["mysql-proxy"]
+        }
+      ]
+    }
+  ])
+}
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make changes following the coding standards
+4. Add tests for new functionality
+5. Update documentation
+6. Submit a pull request
+
+### Development Guidelines
+
+- Follow Terraform best practices
+- Use meaningful variable names and descriptions
+- Add comprehensive validation rules
+- Include examples in documentation
+- Test with multiple database engines
+- Ensure backward compatibility
+
+## License
+
+This module is licensed under the MIT License. See [LICENSE](LICENSE) for full details.
+
+## Authors
+
+- **Diego A. Zarate** - *Initial work* - [GitHub Profile](https://github.com/dzarate)
+
+## Acknowledgments
+
+- AWS RDS documentation and best practices
+- Terraform AWS Provider documentation
+- AWS Well-Architected Framework
+- Community feedback and contributions
 
 ---
 
-## 👤 Author
-
-**Diego A. Zarate** - *Database Infrastructure & Performance Specialist*
-
----
-
-> 🗄️ **Database Excellence**: This RDS module provides enterprise-grade database infrastructure with high availability, security, performance optimization, and comprehensive monitoring built-in.
+**Note**: This module follows semantic versioning. Please check the [CHANGELOG](CHANGELOG.md) for version-specific changes and migration guides.

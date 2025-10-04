@@ -1,17 +1,14 @@
 # =============================================================================
-# COMPUTE LAYER PROVIDERS
+# COMPUTE LAYER - TERRAFORM PROVIDERS
 # =============================================================================
 
-provider "aws" {
-  region  = var.aws_region
-  profile = var.aws_profile
+terraform {
+  required_version = ">= 1.9.0"
 
-  default_tags {
-    tags = {
-      Project     = var.project_name
-      Environment = var.environment
-      Layer       = "compute"
-      ManagedBy   = "terraform"
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
     }
   }
 }

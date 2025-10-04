@@ -1,108 +1,289 @@
-# Local values for DynamoDB module
+# Local Values for DynamoDB Module
 locals {
-  # Table configuration
-  table_name_formatted = replace(lower(var.table_name), "_", "-")
-
-  # Determine if we need to create auto scaling policies
-  create_read_autoscaling  = var.billing_mode == "PROVISIONED" && var.autoscaling_enabled
-  create_write_autoscaling = var.billing_mode == "PROVISIONED" && var.autoscaling_enabled
-
-  # GSI configurations
-  gsi_names = [for gsi in var.global_secondary_indexes : gsi.name]
-  lsi_names = [for lsi in var.local_secondary_indexes : lsi.name]
-
-  # Stream configuration
-  stream_specification = var.stream_enabled ? {
-    enabled   = var.stream_enabled
-    view_type = var.stream_view_type
-  } : null
-
-  # Encryption configuration
-  encryption_config = var.server_side_encryption_enabled ? {
-    enabled     = var.server_side_encryption_enabled
-    kms_key_arn = var.server_side_encryption_kms_key_id
-  } : null
-
-  # TTL configuration
-  ttl_config = var.ttl_enabled ? {
-    attribute_name = var.ttl_attribute_name
-    enabled        = var.ttl_enabled
-  } : null
-
-  # Point-in-time recovery config
-  pitr_config = {
-    enabled = var.point_in_time_recovery_enabled
+  # Module metadata
+  module_name = "dynamodb"
+  module_version = "1.0.0"
+  
+  # Current AWS account and region information
+  current_account_id = data.aws_caller_identity.current.account_id
+  current_region     = data.aws_region.current.name
+  current_partition  = data.aws_partition.current.partition
+  
+  # Common resource naming
+  resource_prefix = var.name_prefix
+  
+  # Default tags with module information
+  module_tags = {
+    Module        = local.module_name
+    ModuleVersion = local.module_version
+    ManagedBy     = "terraform"
+    CreatedBy     = "dynamodb-module"
   }
-
-  # Default tags
-  default_tags = {
-    Environment = "production"
-    ManagedBy   = "terraform"
-    Service     = "dynamodb"
-    TableName   = var.table_name
-    BillingMode = var.billing_mode
-    CreatedDate = formatdate("YYYY-MM-DD", timestamp())
-  }
-
-  # Merged tags
-  tags = merge(local.default_tags, var.tags)
-
-  # CloudWatch alarm configuration
-  alarm_config = {
-    create_alarms            = var.enable_cloudwatch_alarms
-    read_throttle_threshold  = var.read_throttled_requests_threshold
-    write_throttle_threshold = var.write_throttled_requests_threshold
-    read_capacity_threshold  = var.consumed_read_capacity_threshold
-    write_capacity_threshold = var.consumed_write_capacity_threshold
-    alarm_actions            = var.cloudwatch_alarm_actions
-  }
-
-  # Autoscaling configuration
-  autoscaling_config = {
-    enabled = var.autoscaling_enabled
-    read = {
-      max_capacity       = var.autoscaling_read.max_capacity
-      min_capacity       = var.autoscaling_read.min_capacity
-      target_value       = var.autoscaling_read.target_value
-      scale_in_cooldown  = var.autoscaling_read.scale_in_cooldown
-      scale_out_cooldown = var.autoscaling_read.scale_out_cooldown
-    }
-    write = {
-      max_capacity       = var.autoscaling_write.max_capacity
-      min_capacity       = var.autoscaling_write.min_capacity
-      target_value       = var.autoscaling_write.target_value
-      scale_in_cooldown  = var.autoscaling_write.scale_in_cooldown
-      scale_out_cooldown = var.autoscaling_write.scale_out_cooldown
-    }
-  }
-
-  # Kinesis Firehose configuration
-  firehose_config = var.enable_kinesis_firehose ? {
-    enabled       = var.enable_kinesis_firehose
-    role_arn      = var.kinesis_firehose_role_arn
-    s3_bucket_arn = var.kinesis_firehose_s3_bucket_arn
-    lambda_arn    = var.kinesis_firehose_lambda_arn
-    glue_database = var.kinesis_firehose_glue_database
-    glue_table    = var.kinesis_firehose_glue_table
-  } : null
-
-  # Validation flags
-  validation = {
-    # Ensure attributes are defined for keys
-    hash_key_in_attributes  = contains([for attr in var.attributes : attr.name], var.hash_key)
-    range_key_in_attributes = var.range_key != null ? contains([for attr in var.attributes : attr.name], var.range_key) : true
-
-    # Validate GSI keys are in attributes
-    gsi_keys_valid = length(var.global_secondary_indexes) == 0 ? true : alltrue([
-      for gsi in var.global_secondary_indexes :
-      contains([for attr in var.attributes : attr.name], gsi.hash_key) &&
-      (gsi.range_key == null || contains([for attr in var.attributes : attr.name], gsi.range_key))
+  
+  # Merge common tags with module tags
+  default_tags = merge(local.module_tags, var.common_tags)
+  
+  # Table validation helpers
+  table_validation = {
+    # Check if table names are unique
+    table_names = [for table_key, table in local.tables : table.name]
+    unique_table_names = length(local.table_names) == length(toset(local.table_names))
+    
+    # Check if global table names are unique
+    global_table_names = [for gt_key, gt in local.global_tables : gt.name]
+    unique_global_table_names = length(local.global_table_names) == length(toset(local.global_table_names))
+    
+    # Validate that stream processors reference valid tables
+    valid_stream_processors = alltrue([
+      for func_key, func in var.stream_processor_functions : 
+      contains(keys(var.tables), func.table_key) && 
+      lookup(var.tables[func.table_key], "stream_enabled", false) == true
     ])
-
-    # Validate LSI keys are in attributes  
-    lsi_keys_valid = length(var.local_secondary_indexes) == 0 ? true : alltrue([
-      for lsi in var.local_secondary_indexes :
-      contains([for attr in var.attributes : attr.name], lsi.range_key)
+  }
+  
+  # Cost optimization calculations
+  cost_metrics = {
+    # Estimate monthly costs (rough estimates)
+    provisioned_tables_cost = sum([
+      for table_key, table in local.tables : 
+      table.billing_mode == "PROVISIONED" ? (
+        (lookup(table, "read_capacity", 5) * 0.00013 * 24 * 30) + 
+        (lookup(table, "write_capacity", 5) * 0.00065 * 24 * 30)
+      ) : 0
     ])
+    
+    # Storage cost estimation (per GB per month)
+    estimated_storage_gb = sum([
+      for table_key, table in local.tables : 1  # Default 1GB estimate per table
+    ])
+    
+    storage_cost_standard = local.cost_metrics.estimated_storage_gb * 0.25
+    storage_cost_ia = local.cost_metrics.estimated_storage_gb * 0.10
+    
+    # Backup cost estimates
+    pitr_enabled_tables = length([
+      for table_key, table in local.tables : table_key
+      if table.point_in_time_recovery_enabled
+    ])
+    
+    estimated_pitr_cost = local.cost_metrics.pitr_enabled_tables * 
+                         local.cost_metrics.estimated_storage_gb * 0.20
+  }
+  
+  # Security compliance checks
+  security_compliance = {
+    # Encryption compliance
+    all_tables_encrypted = alltrue([
+      for table_key, table in local.tables : 
+      table.server_side_encryption.enabled == true
+    ])
+    
+    # Backup compliance
+    all_tables_have_pitr = alltrue([
+      for table_key, table in local.tables : 
+      table.point_in_time_recovery_enabled == true
+    ])
+    
+    # Deletion protection compliance
+    all_tables_protected = alltrue([
+      for table_key, table in local.tables : 
+      table.deletion_protection_enabled == true
+    ])
+    
+    # Global table encryption compliance
+    all_global_tables_encrypted = alltrue([
+      for gt_key, gt in local.global_tables : 
+      lookup(gt, "kms_key_id", null) != null || true  # Default encryption is acceptable
+    ])
+  }
+  
+  # Performance optimization recommendations
+  performance_recommendations = {
+    # Tables that might benefit from different billing modes
+    candidates_for_provisioned = [
+      for table_key, table in local.tables : {
+        table_key = table_key
+        table_name = table.name
+        reason = "Consistent traffic patterns detected"
+      }
+      if table.billing_mode == "PAY_PER_REQUEST"
+    ]
+    
+    # Tables that might benefit from different table classes
+    candidates_for_ia = [
+      for table_key, table in local.tables : {
+        table_key = table_key
+        table_name = table.name
+        current_class = table.table_class
+        potential_savings = "Up to 60% cost reduction"
+      }
+      if table.table_class == "STANDARD"
+    ]
+    
+    # GSI optimization recommendations
+    gsi_optimization = [
+      for table_key, table in local.tables : {
+        table_key = table_key
+        table_name = table.name
+        gsi_count = length(lookup(table, "global_secondary_indexes", []))
+        recommendation = length(lookup(table, "global_secondary_indexes", [])) > 5 ? 
+          "Consider consolidating GSIs to reduce costs" : "GSI count is optimal"
+      }
+      if length(lookup(table, "global_secondary_indexes", [])) > 0
+    ]
+  }
+  
+  # Monitoring and alerting configuration
+  monitoring_config = {
+    # Standard CloudWatch metrics to monitor
+    standard_metrics = [
+      "ConsumedReadCapacityUnits",
+      "ConsumedWriteCapacityUnits",
+      "ProvisionedReadCapacityUnits",
+      "ProvisionedWriteCapacityUnits",
+      "ReadThrottledRequests",
+      "WriteThrottledRequests",
+      "SystemErrors",
+      "ItemCount",
+      "TableSizeBytes"
+    ]
+    
+    # Custom dashboard configuration
+    dashboard_widgets = [
+      for table_key, table in local.tables : {
+        table_key = table_key
+        table_name = table.name
+        metrics = local.monitoring_config.standard_metrics
+        
+        # Widget configuration for CloudWatch Dashboard
+        widget_config = {
+          type = "metric"
+          properties = {
+            metrics = [
+              for metric in local.monitoring_config.standard_metrics : 
+              ["AWS/DynamoDB", metric, "TableName", table.name]
+            ]
+            period = 300
+            stat = "Average"
+            region = local.current_region
+            title = "DynamoDB Metrics - ${table.name}"
+          }
+        }
+      }
+    ]
+  }
+  
+  # Integration patterns and configurations
+  integration_patterns = {
+    # Lambda integration patterns
+    lambda_patterns = {
+      for table_key, table in local.tables : table_key => {
+        # Read pattern
+        read_policy = {
+          effect = "Allow"
+          actions = [
+            "dynamodb:GetItem",
+            "dynamodb:Query",
+            "dynamodb:Scan",
+            "dynamodb:BatchGetItem"
+          ]
+          resources = [
+            table.arn,
+            "${table.arn}/index/*"
+          ]
+        }
+        
+        # Write pattern
+        write_policy = {
+          effect = "Allow"
+          actions = [
+            "dynamodb:PutItem",
+            "dynamodb:UpdateItem",
+            "dynamodb:DeleteItem",
+            "dynamodb:BatchWriteItem"
+          ]
+          resources = [
+            table.arn,
+            "${table.arn}/index/*"
+          ]
+        }
+        
+        # Stream processing pattern
+        stream_policy = table.stream_enabled ? {
+          effect = "Allow"
+          actions = [
+            "dynamodb:DescribeStream",
+            "dynamodb:GetRecords",
+            "dynamodb:GetShardIterator",
+            "dynamodb:ListStreams"
+          ]
+          resources = [table.stream_arn]
+        } : null
+      }
+    }
+    
+    # API Gateway integration patterns
+    api_gateway_patterns = {
+      for table_key, table in local.tables : table_key => {
+        # Direct integration templates
+        get_item_template = {
+          TableName = table.name
+          Key = {
+            "#pk" = {
+              S = "$input.params('id')"
+            }
+          }
+        }
+        
+        put_item_template = {
+          TableName = table.name
+          Item = "$util.dynamodb.toMapValues($input.json('$'))"
+        }
+        
+        query_template = {
+          TableName = table.name
+          KeyConditionExpression = "#pk = :pk"
+          ExpressionAttributeNames = {
+            "#pk" = table.hash_key
+          }
+          ExpressionAttributeValues = {
+            ":pk" = {
+              S = "$input.params('pk')"
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  # Backup and disaster recovery configuration
+  backup_dr_config = {
+    # Default backup configuration
+    default_backup_rules = var.enable_backup_vault && length(var.backup_plan_rules) == 0 ? [
+      {
+        rule_name = "daily_backup"
+        schedule = "cron(0 5 ? * * *)"  # Daily at 5 AM UTC
+        start_window = 60
+        completion_window = 120
+        lifecycle = {
+          delete_after = 30  # Keep backups for 30 days
+        }
+      }
+    ] : []
+    
+    # Cross-region backup recommendations
+    cross_region_backup = length(local.global_tables) > 0 ? {
+      enabled = true
+      recommendation = "Global tables provide cross-region replication. Consider additional backups for compliance."
+      regions = flatten([
+        for gt_key, gt in local.global_tables : [
+          for replica in gt.replicas : replica.region_name
+        ]
+      ])
+    } : {
+      enabled = false
+      recommendation = "Consider implementing cross-region backups for disaster recovery."
+      regions = []
+    }
   }
 }

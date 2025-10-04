@@ -1,59 +1,70 @@
-# Networking Layer
+# AWS Networking Layer Documentation
+# Author: Diego A. Zarate
 
-## Overview
+This directory contains the Terraform configuration for the AWS networking infrastructure layer. This layer provides the foundational network components that other layers depend on.
 
-The **Networking Layer** provides the foundational network infrastructure for all other layers in the Terraform architecture. This layer creates the Virtual Private Cloud (VPC), subnets, routing, and network connectivity components that serve as the backbone for your AWS infrastructure.
+## 🌐 Overview
 
-## Purpose
+The networking layer creates a complete VPC infrastructure following AWS best practices and the Well-Architected Framework principles:
 
-The networking layer establishes:
-- **Isolated Network Environment**: Secure VPC with proper CIDR allocation
-- **Multi-AZ Architecture**: High availability across multiple availability zones
-- **Public/Private Segregation**: Separate subnets for different access patterns
-- **Internet Connectivity**: Managed internet and NAT gateways
-- **Network Security**: Foundation for network-level security controls
+### Core Components
 
-## Architecture
+- **VPC**: Virtual Private Cloud with DNS support and hostnames enabled
+- **Subnets**: Public, private, database, management, and cache subnets across multiple AZs
+- **Internet Gateway**: Provides internet access to public subnets
+- **NAT Gateways**: Enable outbound internet access for private subnets
+- **Route Tables**: Manage traffic routing between subnets and external networks
+- **Security Groups**: Application-level firewall rules
+- **Network ACLs**: Subnet-level network access control
+- **VPC Endpoints**: Secure access to AWS services without internet routing
+- **DHCP Options**: Custom DNS and domain settings
 
-### 🏗️ **Core Components**
+## 🏗️ Architecture
 
-#### **VPC (Virtual Private Cloud)**
-- Main network container for all resources
-- Environment-specific CIDR blocks
-- DNS hostname and resolution enabled
-- Flow logs for network monitoring
+### Multi-AZ Design
 
-#### **Subnets**
-- **Public Subnets**: For internet-facing resources (ALB, NAT Gateway)
-- **Private Subnets**: For application and database resources
-- **Database Subnets**: Isolated subnets for sensitive data stores
-- Multi-AZ distribution for high availability
+The infrastructure spans multiple Availability Zones for high availability:
 
-#### **Routing & Gateways**
-- **Internet Gateway**: Public internet access
-- **NAT Gateway**: Outbound internet access for private resources
-- **Route Tables**: Traffic routing configuration
-- **VPC Endpoints**: Private connectivity to AWS services
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        VPC (10.x.0.0/16)                   │
+│                                                             │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐ │
+│  │     AZ-a    │  │     AZ-b    │  │        AZ-c         │ │
+│  │             │  │             │  │                     │ │
+│  │ Public      │  │ Public      │  │ Public              │ │
+│  │ 10.x.1.0/24 │  │ 10.x.2.0/24 │  │ 10.x.3.0/24        │ │
+│  │             │  │             │  │                     │ │
+│  │ Private     │  │ Private     │  │ Private             │ │
+│  │ 10.x.11.0/24│  │ 10.x.12.0/24│  │ 10.x.13.0/24       │ │
+│  │             │  │             │  │                     │ │
+│  │ Database    │  │ Database    │  │ Database            │ │
+│  │ 10.x.21.0/24│  │ 10.x.22.0/24│  │ 10.x.23.0/24       │ │
+│  └─────────────┘  └─────────────┘  └─────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+```
 
-#### **Network Connectivity**
-- **Transit Gateway**: Cross-VPC and on-premises connectivity (optional)
-- **VPC Peering**: Direct VPC-to-VPC connections (optional)
-- **VPN Gateway**: Secure on-premises connectivity (optional)
+### Traffic Flow
 
-## Layer Structure
+1. **Internet → Public Subnets**: Through Internet Gateway
+2. **Public → Private**: Through route tables and security groups
+3. **Private → Internet**: Through NAT Gateways in public subnets
+4. **Database**: Isolated with no direct internet access
+
+## 📂 File Structure
 
 ```
 networking/
-├── README.md                    # This documentation
-├── main.tf                      # Main networking configuration
-├── variables.tf                 # Input variables
-├── outputs.tf                   # Network outputs for other layers
-├── locals.tf                    # Local calculations and logic
-├── providers.tf                 # Terraform and provider configuration
-└── environments/
+├── README.md              # This documentation
+├── locals.tf             # Local values and computed configurations
+├── main.tf               # Primary networking resources
+├── outputs.tf            # Output values for other layers
+├── providers.tf          # AWS provider configuration
+├── variables.tf          # Input variable definitions
+└── environments/         # Environment-specific configurations
     ├── dev/
-    │   ├── backend.conf         # S3 backend configuration
-    │   └── terraform.auto.tfvars# Dev environment network settings
+    │   ├── backend.conf
+    │   └── terraform.auto.tfvars
     ├── qa/
     │   ├── backend.conf
     │   └── terraform.auto.tfvars
@@ -65,260 +76,234 @@ networking/
         └── terraform.auto.tfvars
 ```
 
-## Environment Configurations
+## 🔧 Configuration
 
-### 🌍 **CIDR Block Allocation**
+### Environment-Specific Settings
 
-| Environment | VPC CIDR      | Total IPs | Public Subnets | Private Subnets | Database Subnets |
-|-------------|---------------|-----------|----------------|-----------------|------------------|
-| **Dev**     | 10.10.0.0/16 | 65,536    | 10.10.1.0/24   | 10.10.10.0/24   | 10.10.50.0/24    |
-| **QA**      | 10.20.0.0/16 | 65,536    | 10.20.1.0/24   | 10.20.10.0/24   | 10.20.50.0/24    |
-| **UAT**     | 10.30.0.0/16 | 65,536    | 10.30.1.0/24   | 10.30.10.0/24   | 10.30.50.0/24    |
-| **Prod**    | 10.40.0.0/16 | 65,536    | 10.40.1.0/24   | 10.40.10.0/24   | 10.40.50.0/24    |
+#### Development (dev)
+- **CIDR**: 10.0.0.0/16
+- **NAT Gateways**: Single (cost-optimized)
+- **Monitoring**: Basic
+- **Security**: Standard
 
-### 🔧 **Multi-AZ Distribution**
+#### Quality Assurance (qa)
+- **CIDR**: 10.1.0.0/16
+- **NAT Gateways**: Multiple (one per AZ)
+- **Monitoring**: Enhanced
+- **Security**: Enhanced with load testing support
 
-Each environment deploys across multiple availability zones:
-- **Minimum**: 2 AZs (Dev)
-- **Standard**: 3 AZs (QA, UAT, Prod)
-- **Automatic**: Uses `data.aws_availability_zones` for dynamic selection
+#### User Acceptance Testing (uat)
+- **CIDR**: 10.2.0.0/16
+- **NAT Gateways**: Multiple (production-like)
+- **Monitoring**: Enhanced
+- **Security**: Production-like
 
-## Modules Used
+#### Production (prod)
+- **CIDR**: 10.3.0.0/16
+- **NAT Gateways**: Multiple (high availability)
+- **Monitoring**: Comprehensive
+- **Security**: Maximum (WAF, GuardDuty, Security Hub)
 
-### **VPC Module**
-```hcl
-module "vpc" {
-  source = "../../modules/vpc"
-  
-  name               = "${var.project_name}-${var.environment}"
-  cidr               = var.vpc_cidr
-  availability_zones = var.availability_zones
-  
-  # Subnet configurations
-  public_subnets   = var.public_subnets
-  private_subnets  = var.private_subnets
-  database_subnets = var.database_subnets
-  
-  # Gateway configurations
-  enable_nat_gateway = var.enable_nat_gateway
-  single_nat_gateway = var.single_nat_gateway
-  enable_vpn_gateway = var.enable_vpn_gateway
-  
-  tags = local.common_tags
-}
-```
+### Security Groups
 
-### **VPC Endpoints Module** (Optional)
-```hcl
-module "vpc_endpoints" {
-  count  = var.enable_vpc_endpoints ? 1 : 0
-  source = "../../modules/vpc-endpoints"
-  
-  vpc_id           = module.vpc.vpc_id
-  subnet_ids       = module.vpc.private_subnets
-  route_table_ids  = module.vpc.private_route_table_ids
-  
-  tags = local.common_tags
-}
-```
+Pre-configured security groups for common use cases:
 
-### **Transit Gateway Module** (Optional)
-```hcl
-module "transit_gateway" {
-  count  = var.enable_transit_gateway ? 1 : 0
-  source = "../../modules/transit-gateway"
-  
-  description                     = "${var.project_name}-${var.environment}-tgw"
-  vpc_attachments = {
-    vpc = {
-      vpc_id     = module.vpc.vpc_id
-      subnet_ids = module.vpc.private_subnets
-    }
-  }
-  
-  tags = local.common_tags
-}
-```
+- **web**: HTTP/HTTPS traffic from internet
+- **app**: Application traffic from VPC
+- **database**: Database access from app subnets
+- **load_balancer**: Load balancer traffic management
+- **cache**: Redis/Memcached access
+- **monitoring**: Prometheus/Grafana access
+- **management**: SSH access from authorized networks
 
-## Key Outputs
+### Network ACLs
 
-The networking layer exposes critical outputs for other layers:
+Layer 4 network access control:
 
-```hcl
-# VPC Information
-output "vpc_id" {
-  description = "ID of the VPC"
-  value       = module.vpc.vpc_id
-}
+- **Public**: Allow HTTP/HTTPS, deny SSH from internet
+- **Private**: Allow all traffic from VPC
+- **Database**: Restrict to database ports from app subnets
 
-output "vpc_cidr_block" {
-  description = "CIDR block of the VPC"
-  value       = module.vpc.vpc_cidr_block
-}
+## 🚀 Deployment
 
-# Subnet Information
-output "public_subnets" {
-  description = "List of IDs of public subnets"
-  value       = module.vpc.public_subnets
-}
+### Prerequisites
 
-output "private_subnets" {
-  description = "List of IDs of private subnets" 
-  value       = module.vpc.private_subnets
-}
+1. **AWS Credentials**: Configured with appropriate permissions
+2. **Terraform**: Version >= 1.9.0
+3. **S3 Backend**: State storage bucket created
+4. **DynamoDB**: State locking table created
 
-output "database_subnets" {
-  description = "List of IDs of database subnets"
-  value       = module.vpc.database_subnets
-}
-```
+### Deployment Steps
 
-## Configuration Examples
+1. **Initialize Terraform:**
+   ```bash
+   cd environments/dev
+   terraform init -backend-config=backend.conf
+   ```
 
-### **Development Environment**
-```hcl
-# Minimal configuration for cost optimization
-vpc_cidr = "10.10.0.0/16"
-availability_zones = ["us-east-1a", "us-east-1b"]
+2. **Review and Plan:**
+   ```bash
+   terraform plan
+   ```
 
-public_subnets   = ["10.10.1.0/24", "10.10.2.0/24"]
-private_subnets  = ["10.10.10.0/24", "10.10.20.0/24"]
-database_subnets = ["10.10.50.0/24", "10.10.60.0/24"]
+3. **Deploy Infrastructure:**
+   ```bash
+   terraform apply
+   ```
 
-# Cost optimization
-enable_nat_gateway = true
-single_nat_gateway = true  # Single NAT for cost savings
-enable_vpc_endpoints = false
-```
+4. **Verify Outputs:**
+   ```bash
+   terraform output
+   ```
 
-### **Production Environment**
-```hcl
-# Full redundancy and security
-vpc_cidr = "10.40.0.0/16"
-availability_zones = ["us-east-1a", "us-east-1b", "us-east-1c"]
+### Using Management Scripts
 
-public_subnets   = ["10.40.1.0/24", "10.40.2.0/24", "10.40.3.0/24"]
-private_subnets  = ["10.40.10.0/24", "10.40.20.0/24", "10.40.30.0/24"]
-database_subnets = ["10.40.50.0/24", "10.40.60.0/24", "10.40.70.0/24"]
-
-# High availability
-enable_nat_gateway = true
-single_nat_gateway = false  # NAT in each AZ
-enable_vpc_endpoints = true  # Private AWS service access
-enable_dns_hostnames = true
-enable_dns_support = true
-```
-
-## Deployment
-
-### **Prerequisites**
-1. **Global Resources**: Deploy global layer first (if exists)
-2. **AWS Permissions**: VPC and networking service permissions
-3. **Region Selection**: Choose appropriate AWS region
-
-### **Deployment Order**
 ```bash
-# 1. Initialize Terraform
-cd layers/networking/environments/dev
-terraform init -backend-config=backend.conf
+# Initialize all environments
+make init-all ENV=dev
 
-# 2. Plan the deployment
-terraform plan -var-file=terraform.auto.tfvars
+# Deploy specific environment
+make apply LAYER=networking ENV=dev
 
-# 3. Apply changes
-terraform apply -var-file=terraform.auto.tfvars
+# Check status
+make output LAYER=networking ENV=dev
 ```
 
-### **Using Makefile**
+## 📊 Outputs
+
+This layer provides the following outputs for use by other layers:
+
+### Core Infrastructure
+- `vpc_id`: VPC identifier
+- `public_subnets`: Public subnet IDs
+- `private_subnets`: Private subnet IDs
+- `database_subnets`: Database subnet IDs
+- `security_group_ids`: Map of security group IDs
+
+### Network Components
+- `igw_id`: Internet Gateway ID
+- `nat_ids`: NAT Gateway IDs
+- `route_table_ids`: Route table IDs
+- `database_subnet_group_name`: RDS subnet group
+
+### Configuration Details
+- `vpc_cidr_block`: VPC CIDR for reference
+- `azs`: Availability zones used
+- `network_summary`: Complete network overview
+
+## 🔐 Security Features
+
+### Defense in Depth
+
+1. **Network Segmentation**: Separate subnets for different tiers
+2. **Security Groups**: Application-level firewall rules
+3. **Network ACLs**: Subnet-level access control
+4. **VPC Endpoints**: Secure AWS service access
+5. **Flow Logs**: Network traffic monitoring
+
+### Encryption
+
+- **In Transit**: All traffic uses TLS where possible
+- **At Rest**: VPC Flow Logs encrypted in S3/CloudWatch
+- **State**: Terraform state encrypted in S3
+
+### Monitoring
+
+- **VPC Flow Logs**: Capture all network traffic
+- **CloudWatch**: Metrics and alarms
+- **AWS Config**: Configuration compliance
+- **GuardDuty**: Threat detection (production)
+
+## 🚨 Troubleshooting
+
+### Common Issues
+
+#### Connectivity Problems
+
+1. **Check Security Groups**: Ensure proper ingress/egress rules
+2. **Verify Route Tables**: Confirm routes to IGW/NAT
+3. **Network ACLs**: Check for restrictive rules
+4. **DNS Resolution**: Verify DNS settings
+
+#### NAT Gateway Issues
+
+1. **Elastic IP Limits**: Check regional EIP limits
+2. **Route Configuration**: Ensure proper routing to NAT
+3. **Security Groups**: Allow outbound traffic
+
+#### Subnet Issues
+
+1. **CIDR Conflicts**: Ensure non-overlapping CIDRs
+2. **AZ Availability**: Check AZ availability in region
+3. **Subnet Sizing**: Ensure adequate IP addresses
+
+### Diagnostic Commands
+
 ```bash
-# Bootstrap networking for dev environment
-make bootstrap ENVIRONMENT=dev LAYER=networking
+# Check VPC configuration
+aws ec2 describe-vpcs --vpc-ids <vpc-id>
 
-# Deploy networking infrastructure
-make deploy ENVIRONMENT=dev LAYER=networking
+# Verify route tables
+aws ec2 describe-route-tables --filters "Name=vpc-id,Values=<vpc-id>"
 
-# Validate deployment
-make validate ENVIRONMENT=dev LAYER=networking
+# Check security groups
+aws ec2 describe-security-groups --filters "Name=vpc-id,Values=<vpc-id>"
+
+# Monitor NAT Gateway
+aws ec2 describe-nat-gateways --filter "Name=vpc-id,Values=<vpc-id>"
 ```
 
-## Dependencies
+## 📈 Monitoring and Alerting
 
-### **⬇️ Depends On:**
-- **Global Layer**: May reference global KMS keys, IAM roles (optional)
-- **AWS Account**: Properly configured AWS account with permissions
+### CloudWatch Metrics
 
-### **⬆️ Provides To:**
-- **Security Layer**: VPC ID, subnet IDs for security group rules
-- **Data Layer**: Database subnet group, VPC for RDS/ElastiCache
-- **Compute Layer**: Subnets for EC2, EKS, ECS, ALB placement
+- **NAT Gateway**: Bytes processed, packet count, errors
+- **VPC Flow Logs**: Traffic analysis and anomaly detection
+- **Network ACL**: Denied packets
 
-## Security Considerations
+### Recommended Alarms
 
-### **🛡️ Network Security**
-- **Private by Default**: Most resources in private subnets
-- **Controlled Internet Access**: Public subnets only for necessary resources
-- **Network ACLs**: Additional layer of subnet-level filtering
-- **Flow Logs**: Network traffic monitoring and auditing
+1. **High NAT Gateway Usage**: > 80% of capacity
+2. **Unusual Traffic Patterns**: Anomaly detection
+3. **Security Group Violations**: Denied connections
+4. **Network ACL Blocks**: Excessive blocked traffic
 
-### **🔒 Best Practices**
-1. **Least Privilege**: Minimal required network access
-2. **Defense in Depth**: Multiple layers of network security
-3. **Monitoring**: Enable VPC Flow Logs for traffic analysis
-4. **Encryption**: Use VPC endpoints for encrypted AWS service communication
+## 💰 Cost Optimization
 
-## Monitoring & Troubleshooting
+### Development Environment
 
-### **📊 Monitoring**
-- **VPC Flow Logs**: Network traffic analysis
-- **CloudWatch Metrics**: NAT Gateway, Internet Gateway metrics
-- **Route Table Monitoring**: Routing configuration validation
+- Single NAT Gateway
+- Reduced logging retention
+- Basic monitoring
 
-### **🔧 Common Issues**
+### Production Environment
 
-#### **Connectivity Problems**
-```bash
-# Check route table associations
-aws ec2 describe-route-tables --filters "Name=vpc-id,Values=vpc-xxxxx"
+- Multiple NAT Gateways for HA
+- VPC Endpoints to reduce data transfer costs
+- Reserved Capacity for predictable workloads
 
-# Verify NAT Gateway status
-aws ec2 describe-nat-gateways --filter "Name=vpc-id,Values=vpc-xxxxx"
+### Cost Monitoring
 
-# Check subnet associations
-aws ec2 describe-subnets --filters "Name=vpc-id,Values=vpc-xxxxx"
-```
+- Resource tagging for cost allocation
+- CloudWatch cost anomaly detection
+- Regular cost reviews and optimization
 
-#### **CIDR Conflicts**
-- Ensure CIDR blocks don't overlap between environments
-- Plan for future VPC peering or Transit Gateway connections
-- Reserve address space for expansion
+## 🔄 Maintenance
 
-## Cost Optimization
+### Regular Tasks
 
-### **💰 Cost Factors**
-- **NAT Gateway**: Most expensive component (~$45/month per gateway)
-- **Data Transfer**: Cross-AZ and internet transfer costs
-- **VPC Endpoints**: Per hour and per GB costs
+1. **Security Group Audits**: Remove unused rules
+2. **Network ACL Reviews**: Ensure proper restrictions
+3. **Flow Log Analysis**: Monitor for suspicious activity
+4. **Cost Reviews**: Optimize for cost efficiency
 
-### **🎯 Optimization Strategies**
-- **Single NAT Gateway**: Use in dev environments
-- **VPC Endpoints**: Reduce data transfer costs for AWS services
-- **Right-sizing**: Choose appropriate subnet sizes
-- **Resource Cleanup**: Remove unused network resources
+### Updates and Changes
 
-## Related Documentation
-
-- [Main Project README](../../README.md)
-- [Global Layer README](../../global/README.md)
-- [Security Layer README](../security/README.md)
-- [VPC Module Documentation](../../modules/vpc/README.md)
-- [AWS VPC Best Practices](https://docs.aws.amazon.com/vpc/latest/userguide/vpc-security-best-practices.html)
+1. **Test in Development**: Always test changes in dev first
+2. **Use Terraform Plan**: Review changes before applying
+3. **Backup State**: Ensure state backups are current
+4. **Document Changes**: Update documentation
 
 ---
 
-## 👤 Author
-
-**Diego A. Zarate** - *Network Infrastructure Specialist*
-
----
-
-> 💡 **Next Steps**: After networking deployment, proceed with [Security Layer](../security/README.md) configuration.
+**Note**: This networking layer is the foundation for all other infrastructure layers. Changes should be carefully planned and tested to avoid disrupting dependent resources.

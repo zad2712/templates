@@ -1,322 +1,200 @@
-# Global Terraform Configuration
+# Global AWS Infrastructure Resources
 
-## Overview
+**Author:** Diego A. Zarate
 
-The `global` folder contains Terraform configurations for **account-wide shared resources** that are deployed once per AWS account and used across all environments and layers. These resources are foundational components that need to exist before any environment-specific infrastructure can be deployed.
+This directory contains Terraform configurations for global AWS resources that are shared across multiple environments and regions. These resources are typically deployed once and used by all other infrastructure layers.
 
-## Purpose
+## 📋 Global Resources
 
-The global configuration serves several critical purposes:
+### Core Global Services
 
-### 🏗️ **Foundation Infrastructure**
-- Resources that are shared across all environments (dev, qa, uat, prod)
-- Account-level configurations that don't belong to any specific environment
-- Infrastructure that must exist before layer-specific resources can be deployed
+- **S3 Buckets**: Terraform state storage, logging, and backup buckets
+- **DynamoDB Tables**: Terraform state locking tables
+- **IAM Roles**: Cross-account and service roles
+- **KMS Keys**: Global encryption keys for cross-region use
+- **Route 53**: Global DNS zones and records
+- **CloudFront**: Global CDN distributions
+- **WAF**: Global web application firewall rules
+- **Certificate Manager**: Global SSL/TLS certificates
 
-### 🔒 **Security & Compliance**
-- Account-wide security policies and configurations
-- Cross-account IAM roles and policies
-- Security baseline that applies to the entire AWS account
+### Cross-Region Resources
 
-### 💰 **Cost Management**
-- Centralized billing and cost allocation tags
-- Account-wide cost controls and budgets
-- Resource quotas and service limits
+- **IAM Policies**: Global identity and access policies
+- **Organizations**: AWS Organizations structure (if applicable)
+- **Control Tower**: Landing zone configuration (if applicable)
+- **SSO**: Single Sign-On configuration
+- **CloudTrail**: Global API logging
+- **Config**: Global compliance configuration
 
-### 🔧 **Operational Excellence**
-- Centralized logging and monitoring infrastructure
-- Account-level CloudTrail configuration
-- AWS Config rules for compliance monitoring
-
-## What Goes in Global?
-
-### ✅ **Should be in Global:**
-
-#### **State Management Infrastructure**
-- S3 buckets for Terraform state storage
-- DynamoDB tables for state locking
-- KMS keys for state encryption
-
-#### **Account-Level IAM Resources**
-- Cross-account roles
-- Service-linked roles
-- Account-wide policies
-- OIDC providers for CI/CD integration
-
-#### **Shared Networking Components**
-- Route 53 hosted zones for the organization
-- Cross-region VPC peering connections
-- Transit Gateway (if used across regions)
-
-#### **Security Foundations**
-- AWS Config configuration recorder
-- CloudTrail for account-level auditing
-- GuardDuty detector (if account-wide)
-- Security Hub configuration
-
-#### **Compliance & Monitoring**
-- AWS Organizations SCPs (if applicable)
-- Account-wide CloudWatch log groups
-- SNS topics for account-wide notifications
-
-#### **Cost Management**
-- AWS Budgets for account monitoring
-- Cost anomaly detection
-- Billing alerts and notifications
-
-### ❌ **Should NOT be in Global:**
-
-#### **Environment-Specific Resources**
-- VPCs, subnets, route tables
-- Application-specific resources
-- Environment-specific security groups
-- Load balancers and compute resources
-
-#### **Layer-Specific Components**
-- Database instances
-- Application servers
-- Caching layers
-- Storage for specific applications
-
-## Structure
+## 🗂️ Directory Structure
 
 ```
 global/
-├── README.md                    # This documentation
-├── main.tf                      # Main configuration
-├── variables.tf                 # Input variables
-├── outputs.tf                   # Output values
-├── locals.tf                    # Local calculations
-├── providers.tf                 # Provider configuration
-├── backend.conf                 # Backend configuration
-└── terraform.auto.tfvars        # Variable values
+├── README.md                 # This file
+├── terraform-state/          # S3 backend and DynamoDB setup
+│   ├── main.tf
+│   ├── variables.tf
+│   ├── outputs.tf
+│   └── terraform.tfvars
+├── dns/                      # Route 53 global DNS
+│   ├── main.tf
+│   ├── variables.tf
+│   └── outputs.tf
+├── certificates/             # ACM global certificates
+│   ├── main.tf
+│   ├── variables.tf
+│   └── outputs.tf
+├── cdn/                      # CloudFront distributions
+│   ├── main.tf
+│   ├── variables.tf
+│   └── outputs.tf
+└── iam/                      # Global IAM resources
+    ├── main.tf
+    ├── variables.tf
+    └── outputs.tf
 ```
 
-## Deployment Strategy
+## 🚀 Deployment Order
 
-### 🚀 **Deployment Order**
-1. **Global resources** (this folder) - Deploy FIRST
-2. **Networking layer** - Deploy second
-3. **Security layer** - Deploy third
-4. **Data layer** - Deploy fourth
-5. **Compute layer** - Deploy last
+Global resources should be deployed in the following order:
 
-### 🔄 **State Management**
-Global resources often include the Terraform state storage infrastructure itself. This creates a "chicken and egg" problem that can be solved by:
+1. **Terraform State Infrastructure** (S3 + DynamoDB)
+2. **Global IAM Roles and Policies**
+3. **Global KMS Keys**
+4. **DNS Zones** (Route 53)
+5. **SSL Certificates** (ACM)
+6. **CloudFront Distributions**
+7. **Global WAF Rules**
 
-1. **Manual Bootstrap**: Create S3 bucket and DynamoDB table manually first
-2. **Local State**: Deploy global resources with local state, then migrate to remote state
-3. **Separate Account**: Use a separate "management" account for state storage
+## 🔧 Configuration
 
-## Example Use Cases
+Global resources are configured once and shared across all environments. Key considerations:
 
-### 🏢 **Multi-Account Setup**
+### Naming Conventions
+
+All global resources follow this naming pattern:
+```
+<project>-global-<service>-<identifier>
+```
+
+Example: `myapp-global-s3-terraform-state`
+
+### Tagging Strategy
+
+Global resources use consistent tagging:
+
 ```hcl
-# Cross-account IAM role for CI/CD
-resource "aws_iam_role" "cicd_cross_account_role" {
-  name = "cicd-cross-account-role"
-  
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = {
-          AWS = "arn:aws:iam::${var.cicd_account_id}:root"
-        }
-      }
-    ]
-  })
+global_tags = {
+  Project     = var.project_name
+  Environment = "global"
+  Layer       = "global"
+  ManagedBy   = "terraform"
+  Repository  = "terraform-infra-aws"
+  Author      = "Diego A. Zarate"
+  Scope       = "global"
 }
 ```
 
-### 🔐 **Shared State Infrastructure**
-```hcl
-# S3 bucket for Terraform state (all environments)
-resource "aws_s3_bucket" "terraform_state" {
-  bucket = "${var.organization}-terraform-state"
-  
-  tags = {
-    Purpose = "Terraform State Storage"
-    Global  = "true"
-  }
-}
+## 🛡️ Security Considerations
 
-# DynamoDB table for state locking
-resource "aws_dynamodb_table" "terraform_locks" {
-  name         = "${var.organization}-terraform-locks"
-  billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "LockID"
-  
-  attribute {
-    name = "LockID"
-    type = "S"
-  }
-}
-```
+### State Management
 
-### 📊 **Account-Wide Monitoring**
-```hcl
-# CloudTrail for account-wide API logging
-resource "aws_cloudtrail" "account_trail" {
-  name           = "${var.organization}-account-trail"
-  s3_bucket_name = aws_s3_bucket.cloudtrail_logs.bucket
-  
-  include_global_service_events = true
-  is_multi_region_trail        = true
-  enable_log_file_validation   = true
-}
-```
+- S3 bucket encryption with AWS KMS
+- Versioning enabled for state recovery
+- DynamoDB table for state locking
+- Cross-region replication for disaster recovery
+- Bucket policies restricting access
 
-## Best Practices
+### Access Control
 
-### 🎯 **Design Principles**
-1. **Single Source of Truth**: Global resources should be the authoritative source for shared infrastructure
-2. **Minimal Coupling**: Avoid tight coupling between global and environment-specific resources
-3. **Change Management**: Global changes affect all environments - implement strict change control
-4. **Documentation**: Document all global resources and their dependencies clearly
+- Principle of least privilege for all IAM roles
+- MFA required for sensitive operations
+- Cross-account roles for multi-account setups
+- Regular access reviews and rotation
 
-### 🛡️ **Security Considerations**
-1. **Least Privilege**: Global IAM resources should follow least privilege principles
-2. **MFA Requirements**: Consider requiring MFA for accessing global resources
-3. **Audit Logging**: Ensure comprehensive logging of all global resource changes
-4. **Encryption**: Encrypt all data at rest and in transit
+### Encryption
 
-### 🔧 **Operational Guidelines**
-1. **Backup Strategy**: Implement robust backup strategies for global resources
-2. **Disaster Recovery**: Plan for disaster recovery of global infrastructure
-3. **Monitoring**: Set up comprehensive monitoring and alerting
-4. **Access Control**: Implement strict access controls for global resource management
+- All data encrypted at rest and in transit
+- Customer-managed KMS keys where required
+- Key rotation policies enabled
+- Separate keys for different services
 
-## Dependencies
+## 🌍 Multi-Region Considerations
 
-### ⬆️ **Global Outputs Used By:**
-- **Networking Layer**: May use global KMS keys, IAM roles
-- **Security Layer**: Uses global IAM policies, audit configurations
-- **Data Layer**: Uses global KMS keys, backup configurations
-- **Compute Layer**: Uses global IAM roles, monitoring infrastructure
+### Primary Region
+- **us-east-1**: Global services (CloudFront, Route 53, IAM)
+- **us-east-1**: Primary region for most services
 
-### ⬇️ **Global Depends On:**
-- **AWS Account Setup**: Account must exist and be properly configured
-- **Initial Permissions**: Sufficient permissions to create account-wide resources
-- **Manual Bootstrap**: May require manual creation of initial state storage
+### Secondary Regions
+- **us-west-2**: Disaster recovery region
+- **eu-west-1**: European operations (if required)
 
-## Common Patterns
+### Global Service Locations
 
-### 🔑 **KMS Key Sharing**
-```hcl
-# Global KMS key for cross-environment encryption
-resource "aws_kms_key" "global_encryption" {
-  description = "Global encryption key for ${var.organization}"
-  
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Principal = { AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root" }
-        Action = "kms:*"
-        Resource = "*"
-      }
-    ]
-  })
-}
+Some AWS services are global by nature:
+- **IAM**: Global service
+- **Route 53**: Global DNS
+- **CloudFront**: Global CDN
+- **WAF**: Can be global or regional
 
-output "global_kms_key_id" {
-  description = "Global KMS key ID for encryption"
-  value       = aws_kms_key.global_encryption.key_id
-}
-```
+## 🔄 State Management
 
-### 📡 **SNS Topic for Notifications**
-```hcl
-# Global SNS topic for account-wide notifications
-resource "aws_sns_topic" "account_notifications" {
-  name = "${var.organization}-account-notifications"
-  
-  tags = {
-    Purpose = "Account-wide notifications"
-    Global  = "true"
-  }
-}
-```
+### Initial Bootstrap
 
-## Deployment Commands
+For the initial deployment, you may need to bootstrap the Terraform state infrastructure:
 
-### 🚀 **Initial Deployment**
 ```bash
-# Navigate to global directory
-cd terraform-infra/global
-
-# Initialize Terraform (may use local backend initially)
+# Deploy state infrastructure first (local state)
+cd global/terraform-state/
 terraform init
+terraform plan
+terraform apply
 
-# Plan the deployment
-terraform plan -var-file="terraform.auto.tfvars"
-
-# Apply the changes
-terraform apply -var-file="terraform.auto.tfvars"
+# Then configure remote state for other global resources
+cd ../dns/
+terraform init -backend-config=backend.conf
+terraform plan
+terraform apply
 ```
 
-### 🔄 **Using Makefile (if available)**
-```bash
-# Bootstrap global resources
-make bootstrap ENVIRONMENT=global LAYER=global
+### Backend Configuration
 
-# Deploy global resources
-make deploy ENVIRONMENT=global LAYER=global
+After deploying the state infrastructure, all other global resources use remote state:
+
+```hcl
+terraform {
+  backend "s3" {
+    # Configuration loaded from backend.conf
+  }
+}
 ```
 
-## Migration and Updates
+## 📚 Documentation References
 
-### ⚡ **Zero-Downtime Updates**
-When updating global resources:
-1. Plan changes carefully - they affect all environments
-2. Use blue-green deployment patterns where possible
-3. Implement proper rollback procedures
-4. Coordinate with all environment deployments
+- [AWS Global Infrastructure](https://aws.amazon.com/about-aws/global-infrastructure/)
+- [Terraform S3 Backend](https://www.terraform.io/docs/backends/types/s3.html)
+- [AWS Multi-Account Strategy](https://docs.aws.amazon.com/whitepapers/latest/organizing-your-aws-environment/organizing-your-aws-environment.html)
+- [AWS Well-Architected Framework](https://aws.amazon.com/architecture/well-architected/)
 
-### 📋 **Change Management Process**
-1. **Assessment**: Evaluate impact on all environments
-2. **Testing**: Test changes in isolated environment first
-3. **Communication**: Notify all stakeholders of planned changes
-4. **Execution**: Deploy during maintenance windows
-5. **Verification**: Verify all environments remain functional
+## 🤝 Contributing
 
-## Troubleshooting
+When adding global resources:
 
-### ❗ **Common Issues**
+1. Ensure resources are truly global (used across environments)
+2. Follow naming conventions and tagging standards
+3. Document any cross-region dependencies
+4. Update this README with new resource types
+5. Test in a development account first
 
-#### **State Lock Conflicts**
-```bash
-# If state is locked, force unlock (use with caution)
-terraform force-unlock LOCK_ID
-```
+## 📞 Support
 
-#### **Permission Errors**
-- Ensure AWS credentials have sufficient permissions
-- Check if SCPs (Service Control Policies) are blocking actions
-- Verify IAM policies allow required actions
+For questions about global infrastructure:
 
-#### **Resource Conflicts**
-- Check for existing resources with same names
-- Verify resource names follow organization naming conventions
-- Ensure resources aren't managed by other tools
-
-## Related Documentation
-
-- [Main README](../README.md) - Overall project documentation
-- [Layer Architecture](../README.md#architecture) - Understanding the layer approach
-- [Environment Strategy](../README.md#environments) - Environment management
-- [Security Guidelines](../README.md#security) - Security best practices
+1. Review this documentation
+2. Check AWS service limits and quotas
+3. Verify IAM permissions
+4. Contact the infrastructure team
 
 ---
 
-## 👤 Author
-
-**Diego A. Zarate** - *Infrastructure Foundation & Global Resource Specialist*
-
----
-
-> 💡 **Remember**: Global resources are the foundation of your infrastructure. Changes here can impact all environments, so proceed with caution and proper planning.
+**Note:** Global resources have wide-reaching impact. Always review changes carefully and test in non-production accounts first.

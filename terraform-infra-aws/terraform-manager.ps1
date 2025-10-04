@@ -1,243 +1,367 @@
-# PowerShell Script for Terraform Infrastructure Management
-# Usage: .\terraform-manager.ps1 -Action <action> -Environment <env> -Layer <layer>
-# Example: .\terraform-manager.ps1 -Action plan -Environment dev -Layer networking
+# Terraform AWS Infrastructure Management Script
+# Author: Diego A. Zarate
+# Description: PowerShell script for managing Terraform operations for AWS infrastructure layers
 
 param(
-    [Parameter(Mandatory=$true)]
-    [ValidateSet("bootstrap", "init", "plan", "apply", "destroy", "validate", "format", "output", "clean", "deploy-all")]
-    [string]$Action,
+    [Parameter(Mandatory=$false, Position=0)]
+    [string]$Command,
     
-    [Parameter(Mandatory=$false)]
-    [ValidateSet("dev", "qa", "uat", "prod")]
-    [string]$Environment = "dev",
+    [Parameter(Mandatory=$false, Position=1)]
+    [string]$Layer,
     
-    [Parameter(Mandatory=$false)]
-    [ValidateSet("networking", "security", "compute", "data")]
-    [string]$Layer = "networking",
+    [Parameter(Mandatory=$false, Position=2)]
+    [string]$Environment,
     
-    [Parameter(Mandatory=$false)]
-    [string]$AwsProfile = "default",
-    
-    [Parameter(Mandatory=$false)]
-    [string]$AwsRegion = "us-east-1"
+    [Parameter(Mandatory=$false, ValueFromRemainingArguments=$true)]
+    [string[]]$ExtraArgs = @()
 )
 
-# Project configuration - UPDATE THESE VALUES
-$ProjectName = "myproject"
-$StateBucketPrefix = "$ProjectName-terraform-state"
-$LockTablePrefix = "$ProjectName-terraform-locks"
+# Set error handling
+$ErrorActionPreference = "Stop"
 
-# Colors for output
-$Colors = @{
-    Red = [ConsoleColor]::Red
-    Green = [ConsoleColor]::Green
-    Yellow = [ConsoleColor]::Yellow
-    Blue = [ConsoleColor]::Blue
-    White = [ConsoleColor]::White
-}
+# Script configuration
+$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$ProjectRoot = $ScriptDir
 
+# Available options
+$ValidLayers = @("networking", "security", "data", "compute")
+$ValidEnvironments = @("dev", "qa", "uat", "prod") 
+$ValidCommands = @("init", "validate", "plan", "apply", "destroy", "output", "format", "lint", "clean")
+
+# Color functions for output
 function Write-ColorOutput {
     param(
         [string]$Message,
-        [ConsoleColor]$Color = [ConsoleColor]::White
+        [string]$Color = "White"
     )
-    Write-Host $Message -ForegroundColor $Color
-}
-
-function Test-AwsCommand {
-    try {
-        aws --version | Out-Null
-        return $true
-    }
-    catch {
-        Write-ColorOutput "Error: AWS CLI not found. Please install AWS CLI first." $Colors.Red
-        return $false
-    }
-}
-
-function Test-TerraformCommand {
-    try {
-        terraform version | Out-Null
-        return $true
-    }
-    catch {
-        Write-ColorOutput "Error: Terraform not found. Please install Terraform first." $Colors.Red
-        return $false
-    }
-}
-
-function Invoke-Bootstrap {
-    Write-ColorOutput "Bootstrapping AWS infrastructure for $Environment environment..." $Colors.Yellow
     
-    # Check if S3 bucket exists
-    $bucketName = "$StateBucketPrefix-$Environment"
+    $ColorMap = @{
+        "Red" = "Red"
+        "Green" = "Green" 
+        "Yellow" = "Yellow"
+        "Blue" = "Blue"
+        "White" = "White"
+        "Cyan" = "Cyan"
+    }
+    
+    Write-Host $Message -ForegroundColor $ColorMap[$Color]
+}
+
+function Write-Info {
+    param([string]$Message)
+    Write-ColorOutput "[INFO] $Message" "Blue"
+}
+
+function Write-Success {
+    param([string]$Message)
+    Write-ColorOutput "[SUCCESS] $Message" "Green"
+}
+
+function Write-Warning {
+    param([string]$Message)
+    Write-ColorOutput "[WARNING] $Message" "Yellow"
+}
+
+function Write-ErrorMessage {
+    param([string]$Message)
+    Write-ColorOutput "[ERROR] $Message" "Red"
+}
+
+# Usage function
+function Show-Usage {
+    Write-ColorOutput "AWS Terraform Infrastructure Management" "Blue"
+    Write-ColorOutput "Author: Diego A. Zarate" "Blue"
+    Write-Host ""
+    Write-Host "Usage: .\terraform-manager.ps1 <command> <layer> <environment> [options]"
+    Write-Host ""
+    Write-ColorOutput "Commands:" "Yellow"
+    Write-Host "  init      - Initialize Terraform for the specified layer and environment"
+    Write-Host "  validate  - Validate Terraform configuration"
+    Write-Host "  plan      - Create execution plan"
+    Write-Host "  apply     - Apply Terraform changes"
+    Write-Host "  destroy   - Destroy Terraform-managed infrastructure"
+    Write-Host "  output    - Show output values"
+    Write-Host "  format    - Format Terraform files"
+    Write-Host "  lint      - Run terraform validate and fmt check"
+    Write-Host "  clean     - Clean temporary files and .terraform directories"
+    Write-Host ""
+    Write-ColorOutput "Layers:" "Yellow"
+    foreach ($layer in $ValidLayers) {
+        Write-Host "  $layer"
+    }
+    Write-Host ""
+    Write-ColorOutput "Environments:" "Yellow"
+    foreach ($env in $ValidEnvironments) {
+        Write-Host "  $env"
+    }
+    Write-Host ""
+    Write-ColorOutput "Examples:" "Yellow"
+    Write-Host "  .\terraform-manager.ps1 init networking dev"
+    Write-Host "  .\terraform-manager.ps1 plan security prod"
+    Write-Host "  .\terraform-manager.ps1 apply compute qa -auto-approve"
+    Write-Host "  .\terraform-manager.ps1 destroy data uat"
+    Write-Host "  .\terraform-manager.ps1 output networking prod"
+    Write-Host ""
+    Write-ColorOutput "Special Commands:" "Yellow"
+    Write-Host "  .\terraform-manager.ps1 init-all <environment>     - Initialize all layers for an environment"
+    Write-Host "  .\terraform-manager.ps1 plan-all <environment>     - Plan all layers for an environment"
+    Write-Host "  .\terraform-manager.ps1 apply-all <environment>    - Apply all layers for an environment (in order)"
+    Write-Host "  .\terraform-manager.ps1 format-all                 - Format all Terraform files"
+    Write-Host "  .\terraform-manager.ps1 lint-all                   - Lint all Terraform configurations"
+}
+
+# Validation functions
+function Test-Layer {
+    param([string]$LayerName)
+    
+    if ($LayerName -notin $ValidLayers) {
+        Write-ErrorMessage "Invalid layer: $LayerName"
+        Write-Host "Available layers: $($ValidLayers -join ', ')"
+        exit 1
+    }
+}
+
+function Test-Environment {
+    param([string]$EnvironmentName)
+    
+    if ($EnvironmentName -notin $ValidEnvironments) {
+        Write-ErrorMessage "Invalid environment: $EnvironmentName"
+        Write-Host "Available environments: $($ValidEnvironments -join ', ')"
+        exit 1
+    }
+}
+
+function Test-Command {
+    param([string]$CommandName)
+    
+    if ($CommandName -notin $ValidCommands) {
+        Write-ErrorMessage "Invalid command: $CommandName"
+        Write-Host "Available commands: $($ValidCommands -join ', ')"
+        exit 1
+    }
+}
+
+# Check dependencies
+function Test-Dependencies {
+    $MissingDeps = @()
+    
+    # Check for Terraform
     try {
-        aws s3api head-bucket --bucket $bucketName --profile $AwsProfile 2>$null
-        Write-ColorOutput "S3 bucket $bucketName already exists" $Colors.Blue
+        $null = Get-Command terraform -ErrorAction Stop
     }
     catch {
-        Write-ColorOutput "Creating S3 bucket: $bucketName" $Colors.Blue
-        aws s3api create-bucket --bucket $bucketName --region $AwsRegion --profile $AwsProfile
-        
-        if ($AwsRegion -ne "us-east-1") {
-            aws s3api create-bucket --bucket $bucketName --region $AwsRegion --profile $AwsProfile --create-bucket-configuration LocationConstraint=$AwsRegion
+        $MissingDeps += "terraform"
+    }
+    
+    # Check for AWS CLI
+    try {
+        $null = Get-Command aws -ErrorAction Stop
+    }
+    catch {
+        $MissingDeps += "aws-cli"
+    }
+    
+    if ($MissingDeps.Count -gt 0) {
+        Write-ErrorMessage "Missing dependencies: $($MissingDeps -join ', ')"
+        Write-Host "Please install the missing dependencies and try again."
+        exit 1
+    }
+}
+
+# Get layer directory path
+function Get-LayerPath {
+    param(
+        [string]$Layer,
+        [string]$Environment
+    )
+    
+    return Join-Path $ProjectRoot "layers\$Layer\environments\$Environment"
+}
+
+# Change to layer directory
+function Set-LayerDirectory {
+    param(
+        [string]$Layer,
+        [string]$Environment
+    )
+    
+    $LayerPath = Get-LayerPath $Layer $Environment
+    
+    if (-not (Test-Path $LayerPath)) {
+        Write-ErrorMessage "Layer directory does not exist: $LayerPath"
+        exit 1
+    }
+    
+    Set-Location $LayerPath
+    Write-Info "Changed to directory: $LayerPath"
+}
+
+# Run Terraform command
+function Invoke-TerraformCommand {
+    param(
+        [string]$Command,
+        [string]$Layer,
+        [string]$Environment,
+        [string[]]$AdditionalArgs = @()
+    )
+    
+    Set-LayerDirectory $Layer $Environment
+    
+    switch ($Command) {
+        "init" {
+            Write-Info "Initializing Terraform for $Layer ($Environment)..."
+            & terraform init -backend-config=backend.conf @AdditionalArgs
+        }
+        "validate" {
+            Write-Info "Validating Terraform configuration for $Layer ($Environment)..."
+            & terraform validate
+        }
+        "plan" {
+            Write-Info "Planning Terraform changes for $Layer ($Environment)..."
+            & terraform plan @AdditionalArgs
+        }
+        "apply" {
+            Write-Info "Applying Terraform changes for $Layer ($Environment)..."
+            & terraform apply @AdditionalArgs
+        }
+        "destroy" {
+            Write-Warning "This will destroy resources in $Layer ($Environment)!"
+            $Confirm = Read-Host "Are you sure? (yes/no)"
+            if ($Confirm -eq "yes") {
+                & terraform destroy @AdditionalArgs
+            } else {
+                Write-Info "Destroy cancelled."
+            }
+        }
+        "output" {
+            Write-Info "Getting outputs for $Layer ($Environment)..."
+            & terraform output @AdditionalArgs
+        }
+        "format" {
+            Write-Info "Formatting Terraform files for $Layer ($Environment)..."
+            & terraform fmt -recursive
+        }
+        "lint" {
+            Write-Info "Linting Terraform configuration for $Layer ($Environment)..."
+            & terraform fmt -check=true -diff=true
+            & terraform validate
+        }
+        "clean" {
+            Write-Info "Cleaning temporary files for $Layer ($Environment)..."
+            Remove-Item -Path ".terraform", ".terraform.lock.hcl", "terraform.tfplan" -Recurse -Force -ErrorAction SilentlyContinue
+        }
+        default {
+            Write-ErrorMessage "Unknown command: $Command"
+            exit 1
+        }
+    }
+}
+
+# Special commands for multiple layers/environments
+function Invoke-SpecialCommand {
+    param(
+        [string]$Command,
+        [string]$Environment = ""
+    )
+    
+    switch ($Command) {
+        "init-all" {
+            Test-Environment $Environment
+            Write-Info "Initializing all layers for $Environment environment..."
+            foreach ($layer in $ValidLayers) {
+                Invoke-TerraformCommand "init" $layer $Environment
+            }
+        }
+        "plan-all" {
+            Test-Environment $Environment
+            Write-Info "Planning all layers for $Environment environment..."
+            foreach ($layer in $ValidLayers) {
+                Invoke-TerraformCommand "plan" $layer $Environment
+            }
+        }
+        "apply-all" {
+            Test-Environment $Environment
+            Write-Warning "This will apply changes to ALL layers in $Environment environment!"
+            $Confirm = Read-Host "Are you sure? (yes/no)"
+            if ($Confirm -eq "yes") {
+                Write-Info "Applying all layers for $Environment environment (in dependency order)..."
+                foreach ($layer in $ValidLayers) {
+                    Invoke-TerraformCommand "apply" $layer $Environment @("-auto-approve")
+                }
+            } else {
+                Write-Info "Apply cancelled."
+            }
+        }
+        "format-all" {
+            Write-Info "Formatting all Terraform files..."
+            Set-Location $ProjectRoot
+            & terraform fmt -recursive
+        }
+        "lint-all" {
+            Write-Info "Linting all Terraform configurations..."
+            foreach ($layer in $ValidLayers) {
+                foreach ($env in $ValidEnvironments) {
+                    $LayerPath = Get-LayerPath $layer $env
+                    if (Test-Path $LayerPath) {
+                        Invoke-TerraformCommand "lint" $layer $env
+                    }
+                }
+            }
+        }
+        default {
+            Write-ErrorMessage "Unknown special command: $Command"
+            exit 1
+        }
+    }
+}
+
+# Main execution logic
+try {
+    # Show help if no parameters or help requested
+    if (-not $Command -or $Command -eq "-h" -or $Command -eq "--help") {
+        Show-Usage
+        exit 0
+    }
+    
+    # Check dependencies
+    Test-Dependencies
+    
+    # Handle special commands
+    $SpecialCommands = @("init-all", "plan-all", "apply-all", "format-all", "lint-all")
+    
+    if ($Command -in $SpecialCommands) {
+        if ($Command -in @("init-all", "plan-all", "apply-all") -and -not $Layer) {
+            Write-ErrorMessage "Missing environment for $Command"
+            Show-Usage
+            exit 1
         }
         
-        aws s3api put-bucket-versioning --bucket $bucketName --versioning-configuration Status=Enabled --profile $AwsProfile
-        aws s3api put-bucket-encryption --bucket $bucketName --server-side-encryption-configuration '{\"Rules\":[{\"ApplyServerSideEncryptionByDefault\":{\"SSEAlgorithm\":\"AES256\"}}]}' --profile $AwsProfile
-    }
-    
-    # Check if DynamoDB table exists
-    $tableName = "$LockTablePrefix-$Environment"
-    try {
-        aws dynamodb describe-table --table-name $tableName --profile $AwsProfile --region $AwsRegion 2>$null
-        Write-ColorOutput "DynamoDB table $tableName already exists" $Colors.Blue
-    }
-    catch {
-        Write-ColorOutput "Creating DynamoDB table: $tableName" $Colors.Blue
-        aws dynamodb create-table --table-name $tableName --attribute-definitions AttributeName=LockID,AttributeType=S --key-schema AttributeName=LockID,KeyType=HASH --billing-mode PAY_PER_REQUEST --profile $AwsProfile --region $AwsRegion
-    }
-    
-    Write-ColorOutput "Bootstrap completed for $Environment environment" $Colors.Green
-}
-
-function Invoke-Init {
-    Write-ColorOutput "Initializing Terraform for $Layer/$Environment..." $Colors.Yellow
-    
-    $backendConfig = Get-Content "layers\$Layer\environments\$Environment\backend.conf" | ForEach-Object { $_ -replace "PROJECT_NAME", $ProjectName }
-    $tempBackendFile = New-TemporaryFile
-    $backendConfig | Out-File -FilePath $tempBackendFile.FullName -Encoding UTF8
-    
-    Push-Location "layers\$Layer"
-    try {
-        terraform init -backend-config=$($tempBackendFile.FullName) -reconfigure
-        Write-ColorOutput "Terraform initialized for $Layer/$Environment" $Colors.Green
-    }
-    finally {
-        Pop-Location
-        Remove-Item $tempBackendFile.FullName -ErrorAction SilentlyContinue
-    }
-}
-
-function Invoke-Plan {
-    Write-ColorOutput "Planning Terraform changes for $Layer/$Environment..." $Colors.Yellow
-    
-    Push-Location "layers\$Layer"
-    try {
-        terraform plan -var-file="environments\$Environment\terraform.auto.tfvars" -out="$Environment.tfplan"
-        Write-ColorOutput "Plan completed for $Layer/$Environment" $Colors.Green
-    }
-    finally {
-        Pop-Location
-    }
-}
-
-function Invoke-Apply {
-    Write-ColorOutput "Applying Terraform changes for $Layer/$Environment..." $Colors.Yellow
-    
-    Push-Location "layers\$Layer"
-    try {
-        terraform apply "$Environment.tfplan"
-        Write-ColorOutput "Apply completed for $Layer/$Environment" $Colors.Green
-    }
-    finally {
-        Pop-Location
-    }
-}
-
-function Invoke-Destroy {
-    Write-ColorOutput "WARNING: This will destroy all resources for $Layer/$Environment!" $Colors.Red
-    $confirm = Read-Host "Are you sure? Type 'yes' to continue"
-    
-    if ($confirm -eq "yes") {
-        Push-Location "layers\$Layer"
-        try {
-            terraform destroy -var-file="environments\$Environment\terraform.auto.tfvars" -auto-approve
-            Write-ColorOutput "Destroy completed for $Layer/$Environment" $Colors.Green
+        if ($Command -in @("format-all", "lint-all")) {
+            Invoke-SpecialCommand $Command
+        } else {
+            Invoke-SpecialCommand $Command $Layer
         }
-        finally {
-            Pop-Location
-        }
-    } else {
-        Write-ColorOutput "Destroy cancelled" $Colors.Yellow
-    }
-}
-
-function Invoke-Validate {
-    Write-ColorOutput "Validating Terraform configuration for $Layer..." $Colors.Yellow
-    
-    Push-Location "layers\$Layer"
-    try {
-        terraform validate
-        Write-ColorOutput "Validation completed for $Layer" $Colors.Green
-    }
-    finally {
-        Pop-Location
-    }
-}
-
-function Invoke-Format {
-    Write-ColorOutput "Formatting Terraform files..." $Colors.Yellow
-    terraform fmt -recursive .
-    Write-ColorOutput "Formatting completed" $Colors.Green
-}
-
-function Invoke-Output {
-    Write-ColorOutput "Showing outputs for $Layer/$Environment..." $Colors.Yellow
-    
-    Push-Location "layers\$Layer"
-    try {
-        terraform output
-    }
-    finally {
-        Pop-Location
-    }
-}
-
-function Invoke-Clean {
-    Write-ColorOutput "Cleaning up temporary files..." $Colors.Yellow
-    
-    Get-ChildItem -Recurse -Name "*.tfplan" | Remove-Item -Force
-    Get-ChildItem -Recurse -Name ".terraform" -Directory | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
-    Get-ChildItem -Recurse -Name ".terraform.lock.hcl" | Remove-Item -Force -ErrorAction SilentlyContinue
-    
-    Write-ColorOutput "Cleanup completed" $Colors.Green
-}
-
-function Invoke-DeployAll {
-    Write-ColorOutput "Deploying all layers for $Environment environment..." $Colors.Yellow
-    
-    $layers = @("networking", "security", "compute", "data")
-    
-    foreach ($currentLayer in $layers) {
-        Write-ColorOutput "Processing layer: $currentLayer" $Colors.Blue
-        
-        & $PSCommandPath -Action init -Environment $Environment -Layer $currentLayer -AwsProfile $AwsProfile -AwsRegion $AwsRegion
-        & $PSCommandPath -Action plan -Environment $Environment -Layer $currentLayer -AwsProfile $AwsProfile -AwsRegion $AwsRegion
-        & $PSCommandPath -Action apply -Environment $Environment -Layer $currentLayer -AwsProfile $AwsProfile -AwsRegion $AwsRegion
+        exit 0
     }
     
-    Write-ColorOutput "All layers deployed for $Environment environment" $Colors.Green
-}
-
-# Main execution
-if (-not (Test-AwsCommand)) {
+    # Validate regular command parameters
+    if (-not $Layer -or -not $Environment) {
+        Write-ErrorMessage "Missing required arguments"
+        Show-Usage
+        exit 1
+    }
+    
+    # Validate inputs
+    Test-Command $Command
+    Test-Layer $Layer
+    Test-Environment $Environment
+    
+    # Run the command
+    Write-Info "Running $Command for $Layer layer in $Environment environment..."
+    Invoke-TerraformCommand $Command $Layer $Environment $ExtraArgs
+    Write-Success "Command completed successfully!"
+    
+} catch {
+    Write-ErrorMessage "An error occurred: $($_.Exception.Message)"
     exit 1
-}
-
-if (-not (Test-TerraformCommand)) {
-    exit 1
-}
-
-switch ($Action) {
-    "bootstrap" { Invoke-Bootstrap }
-    "init" { Invoke-Init }
-    "plan" { Invoke-Plan }
-    "apply" { Invoke-Apply }
-    "destroy" { Invoke-Destroy }
-    "validate" { Invoke-Validate }
-    "format" { Invoke-Format }
-    "output" { Invoke-Output }
-    "clean" { Invoke-Clean }
-    "deploy-all" { Invoke-DeployAll }
 }

@@ -1,489 +1,329 @@
 #!/bin/bash
+# Terraform AWS Infrastructure Management Script
+# Author: Diego A. Zarate
+# Description: Manages Terraform operations for AWS infrastructure layers
 
-# Bash Script for Terraform Infrastructure Management
-# Usage: ./terraform-manager.sh -a <action> -e <env> -l <layer> [-p <profile>] [-r <region>]
-# Example: ./terraform-manager.sh -a plan -e dev -l networking
+set -euo pipefail
 
-# # Make executable (first time only)
-# chmod +x terraform-manager.sh
-
-# # Bootstrap AWS resources
-# ./terraform-manager.sh -a bootstrap -e dev
-
-# # Deploy networking layer
-# ./terraform-manager.sh -a init -l networking -e dev
-# ./terraform-manager.sh -a plan -l networking -e dev
-# ./terraform-manager.sh -a apply -l networking -e dev
-
-# # Deploy all layers for production
-# ./terraform-manager.sh -a deploy-all -e prod -p production -r us-west-2
-
-# # Show help
-# ./terraform-manager.sh --help
-
-# Script configuration
-set -euo pipefail  # Exit on error, undefined vars, and pipe failures
-
-# Default values
-ACTION=""
-ENVIRONMENT="dev"
-LAYER="networking"
-AWS_PROFILE="default"
-AWS_REGION="us-east-1"
-
-# Project configuration - UPDATE THESE VALUES
-PROJECT_NAME="myproject"
-STATE_BUCKET_PREFIX="${PROJECT_NAME}-terraform-state"
-LOCK_TABLE_PREFIX="${PROJECT_NAME}-terraform-locks"
-
-# Colors for output
+# Color codes for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-WHITE='\033[1;37m'
 NC='\033[0m' # No Color
 
-# Function to display colored output
-function echo_color() {
-    local color=$1
-    local message=$2
-    echo -e "${color}${message}${NC}"
+# Script configuration
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$SCRIPT_DIR"
+
+# Available layers
+LAYERS=("networking" "security" "data" "compute")
+# Available environments  
+ENVIRONMENTS=("dev" "qa" "uat" "prod")
+# Available commands
+COMMANDS=("init" "validate" "plan" "apply" "destroy" "output" "format" "lint" "clean")
+
+# Usage function
+usage() {
+    echo -e "${BLUE}AWS Terraform Infrastructure Management${NC}"
+    echo -e "${BLUE}Author: Diego A. Zarate${NC}"
+    echo ""
+    echo "Usage: $0 <command> <layer> <environment> [options]"
+    echo ""
+    echo -e "${YELLOW}Commands:${NC}"
+    echo "  init      - Initialize Terraform for the specified layer and environment"
+    echo "  validate  - Validate Terraform configuration"
+    echo "  plan      - Create execution plan"
+    echo "  apply     - Apply Terraform changes"
+    echo "  destroy   - Destroy Terraform-managed infrastructure"
+    echo "  output    - Show output values"
+    echo "  format    - Format Terraform files"
+    echo "  lint      - Run terraform validate and fmt check"
+    echo "  clean     - Clean temporary files and .terraform directories"
+    echo ""
+    echo -e "${YELLOW}Layers:${NC}"
+    for layer in "${LAYERS[@]}"; do
+        echo "  $layer"
+    done
+    echo ""
+    echo -e "${YELLOW}Environments:${NC}"
+    for env in "${ENVIRONMENTS[@]}"; do
+        echo "  $env"
+    done
+    echo ""
+    echo -e "${YELLOW}Examples:${NC}"
+    echo "  $0 init networking dev"
+    echo "  $0 plan security prod"
+    echo "  $0 apply compute qa -auto-approve"
+    echo "  $0 destroy data uat"
+    echo "  $0 output networking prod"
+    echo ""
+    echo -e "${YELLOW}Special Commands:${NC}"
+    echo "  $0 init-all <environment>     - Initialize all layers for an environment"
+    echo "  $0 plan-all <environment>     - Plan all layers for an environment"
+    echo "  $0 apply-all <environment>    - Apply all layers for an environment (in order)"
+    echo "  $0 format-all                 - Format all Terraform files"
+    echo "  $0 lint-all                   - Lint all Terraform configurations"
 }
 
-# Function to display help
-function show_help() {
-    cat << EOF
-Terraform Infrastructure Management Script
-
-USAGE:
-    $0 -a <action> [-e <environment>] [-l <layer>] [-p <aws_profile>] [-r <aws_region>]
-
-ACTIONS:
-    bootstrap    Initialize AWS backend resources (S3 bucket, DynamoDB table)
-    init         Initialize Terraform for specified layer/environment
-    plan         Generate and show Terraform execution plan
-    apply        Apply Terraform changes
-    destroy      Destroy Terraform-managed infrastructure
-    validate     Validate Terraform configuration syntax
-    format       Format Terraform files
-    output       Show Terraform outputs
-    clean        Clean up temporary files
-    deploy-all   Deploy all layers for specified environment
-
-PARAMETERS:
-    -a, --action       Required. Action to perform
-    -e, --environment  Environment (dev, qa, uat, prod). Default: dev
-    -l, --layer        Layer (networking, security, compute, data). Default: networking
-    -p, --profile      AWS profile to use. Default: default
-    -r, --region       AWS region. Default: us-east-1
-    -h, --help         Show this help message
-
-EXAMPLES:
-    $0 -a bootstrap -e dev
-    $0 -a init -e dev -l networking
-    $0 -a plan -e prod -l security -p production
-    $0 -a deploy-all -e dev -r us-west-2
-EOF
+# Logging functions
+log_info() {
+    echo -e "${BLUE}[INFO]${NC} $1"
 }
 
-# Parse command line arguments
-while [[ $# -gt 0 ]]; do
-    case $1 in
-        -a|--action)
-            ACTION="$2"
-            shift 2
+log_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
+
+log_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+log_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+# Validation functions
+validate_layer() {
+    local layer="$1"
+    if [[ ! " ${LAYERS[*]} " =~ " ${layer} " ]]; then
+        log_error "Invalid layer: $layer"
+        echo "Available layers: ${LAYERS[*]}"
+        exit 1
+    fi
+}
+
+validate_environment() {
+    local environment="$1"
+    if [[ ! " ${ENVIRONMENTS[*]} " =~ " ${environment} " ]]; then
+        log_error "Invalid environment: $environment"
+        echo "Available environments: ${ENVIRONMENTS[*]}"
+        exit 1
+    fi
+}
+
+validate_command() {
+    local command="$1"
+    if [[ ! " ${COMMANDS[*]} " =~ " ${command} " ]]; then
+        log_error "Invalid command: $command"
+        echo "Available commands: ${COMMANDS[*]}"
+        exit 1
+    fi
+}
+
+# Check if required tools are installed
+check_dependencies() {
+    local missing_deps=()
+    
+    if ! command -v terraform &> /dev/null; then
+        missing_deps+=("terraform")
+    fi
+    
+    if ! command -v aws &> /dev/null; then
+        missing_deps+=("aws-cli")
+    fi
+    
+    if ! command -v jq &> /dev/null; then
+        missing_deps+=("jq")
+    fi
+    
+    if [[ ${#missing_deps[@]} -gt 0 ]]; then
+        log_error "Missing dependencies: ${missing_deps[*]}"
+        echo "Please install the missing dependencies and try again."
+        exit 1
+    fi
+}
+
+# Get layer directory path
+get_layer_path() {
+    local layer="$1"
+    local environment="$2"
+    echo "$PROJECT_ROOT/layers/$layer/environments/$environment"
+}
+
+# Change to layer directory
+change_to_layer_dir() {
+    local layer="$1"
+    local environment="$2"
+    local layer_path
+    
+    layer_path=$(get_layer_path "$layer" "$environment")
+    
+    if [[ ! -d "$layer_path" ]]; then
+        log_error "Layer directory does not exist: $layer_path"
+        exit 1
+    fi
+    
+    cd "$layer_path"
+    log_info "Changed to directory: $layer_path"
+}
+
+# Run Terraform command
+run_terraform() {
+    local command="$1"
+    local layer="$2" 
+    local environment="$3"
+    shift 3
+    local extra_args=("$@")
+    
+    change_to_layer_dir "$layer" "$environment"
+    
+    case "$command" in
+        "init")
+            log_info "Initializing Terraform for $layer ($environment)..."
+            terraform init -backend-config=backend.conf "${extra_args[@]}"
             ;;
-        -e|--environment)
-            ENVIRONMENT="$2"
-            shift 2
+        "validate")
+            log_info "Validating Terraform configuration for $layer ($environment)..."
+            terraform validate
             ;;
-        -l|--layer)
-            LAYER="$2"
-            shift 2
+        "plan")
+            log_info "Planning Terraform changes for $layer ($environment)..."
+            terraform plan "${extra_args[@]}"
             ;;
-        -p|--profile)
-            AWS_PROFILE="$2"
-            shift 2
+        "apply")
+            log_info "Applying Terraform changes for $layer ($environment)..."
+            terraform apply "${extra_args[@]}"
             ;;
-        -r|--region)
-            AWS_REGION="$2"
-            shift 2
+        "destroy")
+            log_warning "This will destroy resources in $layer ($environment)!"
+            read -p "Are you sure? (yes/no): " confirm
+            if [[ "$confirm" == "yes" ]]; then
+                terraform destroy "${extra_args[@]}"
+            else
+                log_info "Destroy cancelled."
+            fi
             ;;
-        -h|--help)
-            show_help
-            exit 0
+        "output")
+            log_info "Getting outputs for $layer ($environment)..."
+            terraform output "${extra_args[@]}"
+            ;;
+        "format")
+            log_info "Formatting Terraform files for $layer ($environment)..."
+            terraform fmt -recursive
+            ;;
+        "lint")
+            log_info "Linting Terraform configuration for $layer ($environment)..."
+            terraform fmt -check=true -diff=true
+            terraform validate
+            ;;
+        "clean")
+            log_info "Cleaning temporary files for $layer ($environment)..."
+            rm -rf .terraform .terraform.lock.hcl terraform.tfplan
             ;;
         *)
-            echo_color $RED "Unknown option: $1"
-            show_help
+            log_error "Unknown command: $command"
             exit 1
             ;;
     esac
-done
-
-# Validate required parameters
-if [[ -z "$ACTION" ]]; then
-    echo_color $RED "Error: Action parameter is required"
-    show_help
-    exit 1
-fi
-
-# Validate action
-case "$ACTION" in
-    bootstrap|init|plan|apply|destroy|validate|format|output|clean|deploy-all)
-        ;;
-    *)
-        echo_color $RED "Error: Invalid action '$ACTION'"
-        show_help
-        exit 1
-        ;;
-esac
-
-# Validate environment
-case "$ENVIRONMENT" in
-    dev|qa|uat|prod)
-        ;;
-    *)
-        echo_color $RED "Error: Invalid environment '$ENVIRONMENT'. Must be: dev, qa, uat, prod"
-        exit 1
-        ;;
-esac
-
-# Validate layer
-case "$LAYER" in
-    networking|security|compute|data)
-        ;;
-    *)
-        echo_color $RED "Error: Invalid layer '$LAYER'. Must be: networking, security, compute, data"
-        exit 1
-        ;;
-esac
-
-# Function to check if AWS CLI is installed
-function check_aws_cli() {
-    if ! command -v aws &> /dev/null; then
-        echo_color $RED "Error: AWS CLI not found. Please install AWS CLI first."
-        return 1
-    fi
-    return 0
 }
 
-# Function to check if Terraform is installed
-function check_terraform() {
-    if ! command -v terraform &> /dev/null; then
-        echo_color $RED "Error: Terraform not found. Please install Terraform first."
-        return 1
-    fi
-    return 0
-}
-
-# Function to bootstrap AWS infrastructure
-function bootstrap() {
-    echo_color $YELLOW "Bootstrapping AWS infrastructure for $ENVIRONMENT environment..."
+# Special commands for multiple layers/environments
+run_special_command() {
+    local command="$1"
+    local environment="$2"
     
-    # Check if S3 bucket exists
-    local bucket_name="${STATE_BUCKET_PREFIX}-${ENVIRONMENT}"
-    
-    if aws s3api head-bucket --bucket "$bucket_name" --profile "$AWS_PROFILE" >/dev/null 2>&1; then
-        echo_color $BLUE "S3 bucket $bucket_name already exists"
-    else
-        echo_color $BLUE "Creating S3 bucket: $bucket_name"
-        
-        if [[ "$AWS_REGION" == "us-east-1" ]]; then
-            aws s3api create-bucket \
-                --bucket "$bucket_name" \
-                --region "$AWS_REGION" \
-                --profile "$AWS_PROFILE"
-        else
-            aws s3api create-bucket \
-                --bucket "$bucket_name" \
-                --region "$AWS_REGION" \
-                --profile "$AWS_PROFILE" \
-                --create-bucket-configuration LocationConstraint="$AWS_REGION"
-        fi
-        
-        # Enable versioning
-        aws s3api put-bucket-versioning \
-            --bucket "$bucket_name" \
-            --versioning-configuration Status=Enabled \
-            --profile "$AWS_PROFILE"
-        
-        # Enable server-side encryption
-        aws s3api put-bucket-encryption \
-            --bucket "$bucket_name" \
-            --server-side-encryption-configuration '{
-                "Rules": [{
-                    "ApplyServerSideEncryptionByDefault": {
-                        "SSEAlgorithm": "AES256"
-                    }
-                }]
-            }' \
-            --profile "$AWS_PROFILE"
-    fi
-    
-    # Check if DynamoDB table exists
-    local table_name="${LOCK_TABLE_PREFIX}-${ENVIRONMENT}"
-    
-    if aws dynamodb describe-table \
-        --table-name "$table_name" \
-        --profile "$AWS_PROFILE" \
-        --region "$AWS_REGION" >/dev/null 2>&1; then
-        echo_color $BLUE "DynamoDB table $table_name already exists"
-    else
-        echo_color $BLUE "Creating DynamoDB table: $table_name"
-        aws dynamodb create-table \
-            --table-name "$table_name" \
-            --attribute-definitions AttributeName=LockID,AttributeType=S \
-            --key-schema AttributeName=LockID,KeyType=HASH \
-            --billing-mode PAY_PER_REQUEST \
-            --profile "$AWS_PROFILE" \
-            --region "$AWS_REGION"
-    fi
-    
-    echo_color $GREEN "Bootstrap completed for $ENVIRONMENT environment"
-}
-
-# Function to initialize Terraform
-function terraform_init() {
-    echo_color $YELLOW "Initializing Terraform for $LAYER/$ENVIRONMENT..."
-    
-    # Read backend configuration and substitute project name
-    local backend_config_file="layers/$LAYER/environments/$ENVIRONMENT/backend.conf"
-    
-    if [[ ! -f "$backend_config_file" ]]; then
-        echo_color $RED "Error: Backend configuration file not found: $backend_config_file"
-        exit 1
-    fi
-    
-    # Create temporary backend config with substituted values
-    local temp_backend_file
-    temp_backend_file=$(mktemp)
-    sed "s/PROJECT_NAME/$PROJECT_NAME/g" "$backend_config_file" > "$temp_backend_file"
-    
-    # Change to layer directory
-    pushd "layers/$LAYER" > /dev/null
-    
-    # Initialize Terraform
-    terraform init -backend-config="$temp_backend_file" -reconfigure
-    local exit_code=$?
-    
-    # Cleanup
-    popd > /dev/null
-    rm -f "$temp_backend_file"
-    
-    if [[ $exit_code -eq 0 ]]; then
-        echo_color $GREEN "Terraform initialized for $LAYER/$ENVIRONMENT"
-    else
-        echo_color $RED "Terraform initialization failed"
-        exit $exit_code
-    fi
-}
-
-# Function to plan Terraform changes
-function terraform_plan() {
-    echo_color $YELLOW "Planning Terraform changes for $LAYER/$ENVIRONMENT..."
-    
-    pushd "layers/$LAYER" > /dev/null
-    
-    terraform plan \
-        -var-file="environments/$ENVIRONMENT/terraform.auto.tfvars" \
-        -out="$ENVIRONMENT.tfplan"
-    local exit_code=$?
-    
-    popd > /dev/null
-    
-    if [[ $exit_code -eq 0 ]]; then
-        echo_color $GREEN "Plan completed for $LAYER/$ENVIRONMENT"
-    else
-        echo_color $RED "Plan failed for $LAYER/$ENVIRONMENT"
-        exit $exit_code
-    fi
-}
-
-# Function to apply Terraform changes
-function terraform_apply() {
-    echo_color $YELLOW "Applying Terraform changes for $LAYER/$ENVIRONMENT..."
-    
-    pushd "layers/$LAYER" > /dev/null
-    
-    if [[ ! -f "$ENVIRONMENT.tfplan" ]]; then
-        echo_color $RED "Error: Plan file not found. Please run 'plan' action first."
-        popd > /dev/null
-        exit 1
-    fi
-    
-    terraform apply "$ENVIRONMENT.tfplan"
-    local exit_code=$?
-    
-    popd > /dev/null
-    
-    if [[ $exit_code -eq 0 ]]; then
-        echo_color $GREEN "Apply completed for $LAYER/$ENVIRONMENT"
-    else
-        echo_color $RED "Apply failed for $LAYER/$ENVIRONMENT"
-        exit $exit_code
-    fi
-}
-
-# Function to destroy Terraform resources
-function terraform_destroy() {
-    echo_color $RED "WARNING: This will destroy all resources for $LAYER/$ENVIRONMENT!"
-    read -p "Are you sure? Type 'yes' to continue: " confirm
-    
-    if [[ "$confirm" == "yes" ]]; then
-        pushd "layers/$LAYER" > /dev/null
-        
-        terraform destroy \
-            -var-file="environments/$ENVIRONMENT/terraform.auto.tfvars" \
-            -auto-approve
-        local exit_code=$?
-        
-        popd > /dev/null
-        
-        if [[ $exit_code -eq 0 ]]; then
-            echo_color $GREEN "Destroy completed for $LAYER/$ENVIRONMENT"
-        else
-            echo_color $RED "Destroy failed for $LAYER/$ENVIRONMENT"
-            exit $exit_code
-        fi
-    else
-        echo_color $YELLOW "Destroy cancelled"
-    fi
-}
-
-# Function to validate Terraform configuration
-function terraform_validate() {
-    echo_color $YELLOW "Validating Terraform configuration for $LAYER..."
-    
-    pushd "layers/$LAYER" > /dev/null
-    
-    terraform validate
-    local exit_code=$?
-    
-    popd > /dev/null
-    
-    if [[ $exit_code -eq 0 ]]; then
-        echo_color $GREEN "Validation completed for $LAYER"
-    else
-        echo_color $RED "Validation failed for $LAYER"
-        exit $exit_code
-    fi
-}
-
-# Function to format Terraform files
-function terraform_format() {
-    echo_color $YELLOW "Formatting Terraform files..."
-    
-    terraform fmt -recursive .
-    local exit_code=$?
-    
-    if [[ $exit_code -eq 0 ]]; then
-        echo_color $GREEN "Formatting completed"
-    else
-        echo_color $RED "Formatting failed"
-        exit $exit_code
-    fi
-}
-
-# Function to show Terraform outputs
-function terraform_output() {
-    echo_color $YELLOW "Showing outputs for $LAYER/$ENVIRONMENT..."
-    
-    pushd "layers/$LAYER" > /dev/null
-    
-    terraform output
-    
-    popd > /dev/null
-}
-
-# Function to clean up temporary files
-function clean() {
-    echo_color $YELLOW "Cleaning up temporary files..."
-    
-    # Remove plan files
-    find . -name "*.tfplan" -type f -delete
-    
-    # Remove .terraform directories
-    find . -name ".terraform" -type d -exec rm -rf {} + 2>/dev/null || true
-    
-    # Remove .terraform.lock.hcl files
-    find . -name ".terraform.lock.hcl" -type f -delete
-    
-    echo_color $GREEN "Cleanup completed"
-}
-
-# Function to deploy all layers
-function deploy_all() {
-    echo_color $YELLOW "Deploying all layers for $ENVIRONMENT environment..."
-    
-    local layers=("networking" "security" "compute" "data")
-    
-    for current_layer in "${layers[@]}"; do
-        echo_color $BLUE "Processing layer: $current_layer"
-        
-        # Initialize
-        ACTION="init"
-        LAYER="$current_layer"
-        terraform_init
-        
-        # Plan
-        ACTION="plan"
-        terraform_plan
-        
-        # Apply
-        ACTION="apply"
-        terraform_apply
-    done
-    
-    echo_color $GREEN "All layers deployed for $ENVIRONMENT environment"
-}
-
-# Main execution
-function main() {
-    # Check prerequisites
-    if ! check_aws_cli; then
-        exit 1
-    fi
-    
-    if ! check_terraform; then
-        exit 1
-    fi
-    
-    # Execute the requested action
-    case "$ACTION" in
-        bootstrap)
-            bootstrap
+    case "$command" in
+        "init-all")
+            validate_environment "$environment"
+            log_info "Initializing all layers for $environment environment..."
+            for layer in "${LAYERS[@]}"; do
+                run_terraform "init" "$layer" "$environment"
+            done
             ;;
-        init)
-            terraform_init
+        "plan-all")
+            validate_environment "$environment"
+            log_info "Planning all layers for $environment environment..."
+            for layer in "${LAYERS[@]}"; do
+                run_terraform "plan" "$layer" "$environment"
+            done
             ;;
-        plan)
-            terraform_plan
+        "apply-all")
+            validate_environment "$environment"
+            log_warning "This will apply changes to ALL layers in $environment environment!"
+            read -p "Are you sure? (yes/no): " confirm
+            if [[ "$confirm" == "yes" ]]; then
+                log_info "Applying all layers for $environment environment (in dependency order)..."
+                for layer in "${LAYERS[@]}"; do
+                    run_terraform "apply" "$layer" "$environment" "-auto-approve"
+                done
+            else
+                log_info "Apply cancelled."
+            fi
             ;;
-        apply)
-            terraform_apply
+        "format-all")
+            log_info "Formatting all Terraform files..."
+            cd "$PROJECT_ROOT"
+            terraform fmt -recursive
             ;;
-        destroy)
-            terraform_destroy
+        "lint-all")
+            log_info "Linting all Terraform configurations..."
+            for layer in "${LAYERS[@]}"; do
+                for env in "${ENVIRONMENTS[@]}"; do
+                    if [[ -d "$(get_layer_path "$layer" "$env")" ]]; then
+                        run_terraform "lint" "$layer" "$env"
+                    fi
+                done
+            done
             ;;
-        validate)
-            terraform_validate
-            ;;
-        format)
-            terraform_format
-            ;;
-        output)
-            terraform_output
-            ;;
-        clean)
-            clean
-            ;;
-        deploy-all)
-            deploy_all
+        *)
+            log_error "Unknown special command: $command"
+            exit 1
             ;;
     esac
 }
 
-# Execute main function
+# Main function
+main() {
+    # Check if help is requested
+    if [[ $# -eq 0 ]] || [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
+        usage
+        exit 0
+    fi
+    
+    # Check dependencies
+    check_dependencies
+    
+    local command="$1"
+    
+    # Handle special commands
+    if [[ "$command" == "init-all" ]] || [[ "$command" == "plan-all" ]] || [[ "$command" == "apply-all" ]]; then
+        if [[ $# -lt 2 ]]; then
+            log_error "Missing environment for $command"
+            usage
+            exit 1
+        fi
+        run_special_command "$command" "$2"
+        exit 0
+    fi
+    
+    if [[ "$command" == "format-all" ]] || [[ "$command" == "lint-all" ]]; then
+        run_special_command "$command"
+        exit 0
+    fi
+    
+    # Validate arguments for regular commands
+    if [[ $# -lt 3 ]]; then
+        log_error "Missing required arguments"
+        usage
+        exit 1
+    fi
+    
+    local layer="$2"
+    local environment="$3"
+    shift 3
+    local extra_args=("$@")
+    
+    # Validate inputs
+    validate_command "$command"
+    validate_layer "$layer"
+    validate_environment "$environment"
+    
+    # Run the command
+    log_info "Running $command for $layer layer in $environment environment..."
+    run_terraform "$command" "$layer" "$environment" "${extra_args[@]}"
+    log_success "Command completed successfully!"
+}
+
+# Run main function with all arguments
 main "$@"

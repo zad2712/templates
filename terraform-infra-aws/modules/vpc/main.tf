@@ -1,260 +1,186 @@
-# =============================================================================
-# VPC MODULE - Main Implementation
-# =============================================================================
+# VPC Module - Main Configuration
+# Author: Diego A. Zarate
 
-terraform {
-  required_version = ">= 1.9.0"
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.80"
-    }
-  }
-}
-
-# =============================================================================
-# LOCALS
-# =============================================================================
-
-locals {
-  # Use provided AZs or fetch available ones
-  azs = length(var.availability_zones) > 0 ? var.availability_zones : slice(data.aws_availability_zones.available.names, 0, min(length(var.public_subnets), length(var.private_subnets)))
-
-  # Create maps for subnets indexed by AZ for deterministic resource keys
-  public_subnets_map = {
-    for idx, cidr in var.public_subnets : idx => {
-      cidr = cidr
-      az   = local.azs[idx % length(local.azs)]
-    }
-  }
-
-  private_subnets_map = {
-    for idx, cidr in var.private_subnets : idx => {
-      cidr = cidr
-      az   = local.azs[idx % length(local.azs)]
-    }
-  }
-
-  database_subnets_map = {
-    for idx, cidr in var.database_subnets : idx => {
-      cidr = cidr
-      az   = local.azs[idx % length(local.azs)]
-    }
-  }
-}
-
-# =============================================================================
-# DATA SOURCES
-# =============================================================================
-
-data "aws_availability_zones" "available" {
-  state = "available"
-}
-
-data "aws_region" "current" {}
-data "aws_caller_identity" "current" {}
-
-# =============================================================================
 # VPC
-# =============================================================================
+resource "aws_vpc" "this" {
+  cidr_block           = var.cidr_block
+  instance_tenancy     = var.instance_tenancy
+  enable_dns_hostnames = var.enable_dns_hostnames
+  enable_dns_support   = var.enable_dns_support
 
-resource "aws_vpc" "main" {
-  cidr_block           = var.cidr
-  enable_dns_hostnames = true
-  enable_dns_support   = true
-
-  tags = merge(var.tags, {
-    Name = "${var.name}-vpc"
-  })
-}
-
-# =============================================================================
-# INTERNET GATEWAY
-# =============================================================================
-
-resource "aws_internet_gateway" "main" {
-  vpc_id = aws_vpc.main.id
-
-  tags = merge(var.tags, {
-    Name = "${var.name}-igw"
-  })
-}
-
-# =============================================================================
-# PUBLIC SUBNETS
-# =============================================================================
-
-resource "aws_subnet" "public" {
-  for_each = local.public_subnets_map
-
-  vpc_id                  = aws_vpc.main.id
-  cidr_block              = each.value.cidr
-  availability_zone       = each.value.az
-  map_public_ip_on_launch = true
-
-  tags = merge(var.tags, {
-    Name = "${var.name}-public-${each.key}"
-    Type = "public"
-  })
-}
-
-# =============================================================================
-# PRIVATE SUBNETS
-# =============================================================================
-
-resource "aws_subnet" "private" {
-  for_each = local.private_subnets_map
-
-  vpc_id            = aws_vpc.main.id
-  cidr_block        = each.value.cidr
-  availability_zone = each.value.az
-
-  tags = merge(var.tags, {
-    Name = "${var.name}-private-${each.key}"
-    Type = "private"
-  })
-}
-
-# =============================================================================
-# DATABASE SUBNETS
-# =============================================================================
-
-resource "aws_subnet" "database" {
-  for_each = local.database_subnets_map
-
-  vpc_id            = aws_vpc.main.id
-  cidr_block        = each.value.cidr
-  availability_zone = each.value.az
-
-  tags = merge(var.tags, {
-    Name = "${var.name}-database-${each.key}"
-    Type = "database"
-  })
-}
-
-# =============================================================================
-# ELASTIC IPs FOR NAT GATEWAYS
-# =============================================================================
-
-resource "aws_eip" "nat" {
-  for_each = var.enable_nat_gateway ? local.public_subnets_map : {}
-
-  domain = "vpc"
-
-  tags = merge(var.tags, {
-    Name = "${var.name}-eip-${each.key}"
-  })
-
-  depends_on = [aws_internet_gateway.main]
-}
-
-# =============================================================================
-# NAT GATEWAYS
-# =============================================================================
-
-resource "aws_nat_gateway" "main" {
-  for_each = var.enable_nat_gateway ? local.public_subnets_map : {}
-
-  allocation_id = aws_eip.nat[each.key].id
-  subnet_id     = aws_subnet.public[each.key].id
-
-  tags = merge(var.tags, {
-    Name = "${var.name}-nat-${each.key}"
-  })
-
-  depends_on = [aws_internet_gateway.main]
-}
-
-# =============================================================================
-# ROUTE TABLES
-# =============================================================================
-
-# Public Route Table
-resource "aws_route_table" "public" {
-  vpc_id = aws_vpc.main.id
-
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.main.id
-  }
-
-  tags = merge(var.tags, {
-    Name = "${var.name}-public-rt"
-  })
-}
-
-# Private Route Tables (one per NAT Gateway for HA)
-resource "aws_route_table" "private" {
-  for_each = var.enable_nat_gateway ? local.private_subnets_map : { for k, v in local.private_subnets_map : k => v }
-
-  vpc_id = aws_vpc.main.id
-
-  dynamic "route" {
-    for_each = var.enable_nat_gateway ? [1] : []
-    content {
-      cidr_block     = "0.0.0.0/0"
-      nat_gateway_id = aws_nat_gateway.main[each.key].id
+  tags = merge(
+    var.tags,
+    var.vpc_tags,
+    {
+      Name = var.name
+      Type = "vpc"
     }
+  )
+
+  lifecycle {
+    create_before_destroy = true
   }
-
-  tags = merge(var.tags, {
-    Name = "${var.name}-private-rt-${each.key}"
-  })
 }
 
-# Database Route Table
-resource "aws_route_table" "database" {
-  count = length(var.database_subnets) > 0 ? 1 : 0
+# DHCP Options Set
+resource "aws_vpc_dhcp_options" "this" {
+  count = var.enable_dhcp_options ? 1 : 0
 
-  vpc_id = aws_vpc.main.id
+  domain_name          = var.dhcp_options_domain_name
+  domain_name_servers  = var.dhcp_options_domain_name_servers
+  ntp_servers         = var.dhcp_options_ntp_servers
+  netbios_name_servers = var.dhcp_options_netbios_name_servers
+  netbios_node_type   = var.dhcp_options_netbios_node_type
 
-  tags = merge(var.tags, {
-    Name = "${var.name}-database-rt"
-  })
+  tags = merge(
+    var.tags,
+    var.dhcp_options_tags,
+    {
+      Name = "${var.name}-dhcp-options"
+      Type = "dhcp-options"
+    }
+  )
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
-# =============================================================================
-# ROUTE TABLE ASSOCIATIONS
-# =============================================================================
+# DHCP Options Association
+resource "aws_vpc_dhcp_options_association" "this" {
+  count = var.enable_dhcp_options ? 1 : 0
 
-# Public subnet associations
-resource "aws_route_table_association" "public" {
-  for_each = local.public_subnets_map
-
-  subnet_id      = aws_subnet.public[each.key].id
-  route_table_id = aws_route_table.public.id
+  vpc_id          = aws_vpc.this.id
+  dhcp_options_id = aws_vpc_dhcp_options.this[0].id
 }
 
-# Private subnet associations
-resource "aws_route_table_association" "private" {
-  for_each = local.private_subnets_map
+# Internet Gateway
+resource "aws_internet_gateway" "this" {
+  count = var.create_igw && length(var.public_subnets) > 0 ? 1 : 0
 
-  subnet_id      = aws_subnet.private[each.key].id
-  route_table_id = aws_route_table.private[each.key].id
+  vpc_id = aws_vpc.this.id
+
+  tags = merge(
+    var.tags,
+    var.igw_tags,
+    {
+      Name = "${var.name}-igw"
+      Type = "internet-gateway"
+    }
+  )
+
+  depends_on = [aws_vpc.this]
 }
 
-# Database subnet associations
-resource "aws_route_table_association" "database" {
-  for_each = length(var.database_subnets) > 0 ? local.database_subnets_map : {}
+# Virtual Private Gateway
+resource "aws_vpn_gateway" "this" {
+  count = var.enable_vpn_gateway ? 1 : 0
 
-  subnet_id      = aws_subnet.database[each.key].id
-  route_table_id = aws_route_table.database[0].id
+  vpc_id          = aws_vpc.this.id
+  amazon_side_asn = var.amazon_side_asn
+
+  tags = merge(
+    var.tags,
+    var.vpn_gateway_tags,
+    {
+      Name = "${var.name}-vpn-gateway"
+      Type = "vpn-gateway"
+    }
+  )
 }
 
-# =============================================================================
-# VPC FLOW LOGS (Optional)
-# =============================================================================
+# VPN Gateway Attachment
+resource "aws_vpn_gateway_attachment" "this" {
+  count = var.vpn_gateway_id != "" ? 1 : 0
 
-resource "aws_flow_log" "vpc" {
-  count = var.enable_flow_logs ? 1 : 0
+  vpc_id         = aws_vpc.this.id
+  vpn_gateway_id = var.vpn_gateway_id
+}
 
-  iam_role_arn         = var.flow_logs_iam_role_arn
-  log_destination      = var.flow_logs_s3_bucket_arn
-  log_destination_type = "s3"
-  traffic_type         = "ALL"
-  vpc_id               = aws_vpc.main.id
+# VPN Gateway Route Propagation
+resource "aws_vpn_gateway_route_propagation" "public" {
+  count = var.propagate_public_route_tables_vgw && (var.enable_vpn_gateway || var.vpn_gateway_id != "") ? 1 : 0
 
-  tags = merge(var.tags, {
-    Name = "${var.name}-flow-logs"
-  })
+  vpn_gateway_id = element(
+    concat(
+      aws_vpn_gateway.this[*].id,
+      [var.vpn_gateway_id]
+    ),
+    0
+  )
+  route_table_id = element(aws_route_table.public[*].id, count.index)
+}
+
+resource "aws_vpn_gateway_route_propagation" "private" {
+  count = var.propagate_private_route_tables_vgw && (var.enable_vpn_gateway || var.vpn_gateway_id != "") ? length(var.private_subnets) : 0
+
+  vpn_gateway_id = element(
+    concat(
+      aws_vpn_gateway.this[*].id,
+      [var.vpn_gateway_id]
+    ),
+    0
+  )
+  route_table_id = element(aws_route_table.private[*].id, count.index)
+}
+
+# Public Subnets
+resource "aws_subnet" "public" {
+  count = length(var.public_subnets)
+
+  vpc_id                          = aws_vpc.this.id
+  cidr_block                      = var.public_subnets[count.index]
+  availability_zone               = length(regexall("^[a-z]{2}-", element(var.azs, count.index))) > 0 ? element(var.azs, count.index) : null
+  availability_zone_id            = length(regexall("^[a-z]{2}-", element(var.azs, count.index))) == 0 ? element(var.azs, count.index) : null
+  map_public_ip_on_launch         = var.map_public_ip_on_launch
+  assign_ipv6_address_on_creation = var.public_subnet_assign_ipv6_address_on_creation
+  ipv6_cidr_block                 = var.enable_ipv6 && length(var.public_subnet_ipv6_prefixes) > 0 ? cidrsubnet(aws_vpc.this.ipv6_cidr_block, 8, var.public_subnet_ipv6_prefixes[count.index]) : null
+
+  tags = merge(
+    var.tags,
+    var.public_subnet_tags,
+    lookup(var.public_subnet_tags_per_az, element(var.azs, count.index), {}),
+    {
+      Name = try(
+        var.public_subnet_names[count.index],
+        format("${var.name}-public-${element(var.azs, count.index)}")
+      )
+      Type = "public-subnet"
+      Tier = "public"
+    }
+  )
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# Private Subnets
+resource "aws_subnet" "private" {
+  count = length(var.private_subnets)
+
+  vpc_id                          = aws_vpc.this.id
+  cidr_block                      = var.private_subnets[count.index]
+  availability_zone               = length(regexall("^[a-z]{2}-", element(var.azs, count.index))) > 0 ? element(var.azs, count.index) : null
+  availability_zone_id            = length(regexall("^[a-z]{2}-", element(var.azs, count.index))) == 0 ? element(var.azs, count.index) : null
+  assign_ipv6_address_on_creation = var.private_subnet_assign_ipv6_address_on_creation
+  ipv6_cidr_block                 = var.enable_ipv6 && length(var.private_subnet_ipv6_prefixes) > 0 ? cidrsubnet(aws_vpc.this.ipv6_cidr_block, 8, var.private_subnet_ipv6_prefixes[count.index]) : null
+
+  tags = merge(
+    var.tags,
+    var.private_subnet_tags,
+    lookup(var.private_subnet_tags_per_az, element(var.azs, count.index), {}),
+    {
+      Name = try(
+        var.private_subnet_names[count.index],
+        format("${var.name}-private-${element(var.azs, count.index)}")
+      )
+      Type = "private-subnet"
+      Tier = "private"
+    }
+  )
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }

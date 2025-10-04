@@ -1,904 +1,451 @@
 # Compute Layer
 
-## Overview
+This layer provides comprehensive compute services for the AWS infrastructure, including container orchestration (EKS/ECS), serverless computing (Lambda), API management (API Gateway), content delivery (CloudFront), and batch processing capabilities.
 
-The **Compute Layer** provides comprehensive compute infrastructure including containers, serverless functions, virtual machines, and orchestration services. This layer builds upon the networking, security, and data foundations to deliver scalable application hosting and processing capabilities.
+## Architecture Overview
 
-## Purpose
+The compute layer follows a microservices architecture pattern with multiple compute options:
 
-The compute layer establishes:
-- **Container Orchestration**: EKS for Kubernetes workloads
-- **Serverless Computing**: Lambda functions for event-driven processing
-- **Virtual Machines**: EC2 instances and Auto Scaling Groups
-- **Container Services**: ECS for Docker container management
-- **Load Balancing**: Application Load Balancers for traffic distribution
+- **EKS (Elastic Kubernetes Service)**: Container orchestration for cloud-native applications
+- **ECS (Elastic Container Service)**: Managed container service with Fargate and EC2 launch types
+- **Lambda**: Serverless compute for event-driven architectures
+- **API Gateway**: Managed API service with REST and HTTP API support
+- **Application Load Balancer**: Layer 7 load balancing with advanced routing
+- **CloudFront**: Global content delivery network
+- **Elastic Beanstalk**: Platform-as-a-Service for web applications
+- **AWS Batch**: Managed batch computing service
 
-## Architecture
+## Dependencies
 
-### ⚙️ **Core Compute Components**
+This layer depends on:
+- **Networking Layer**: VPC, subnets, security groups, and network infrastructure
+- **Security Layer**: IAM roles, KMS keys, secrets, and security policies
+- **Data Layer**: Storage services, databases, and data processing resources
 
-#### **Amazon EKS (Elastic Kubernetes Service)**
-- **Managed Control Plane**: AWS-managed Kubernetes API server
-- **Worker Nodes**: EC2 instances or Fargate for serverless containers
-- **Add-ons**: AWS Load Balancer Controller, Cluster Autoscaler, Metrics Server
-- **Security**: IAM integration, encryption, and network policies
+## Features
 
-#### **AWS Lambda**
-- **Event-Driven**: Serverless function execution
-- **Auto Scaling**: Automatic capacity management
-- **Integrations**: Native AWS service integrations
-- **Cost Optimization**: Pay-per-request pricing model
+### Container Services
 
-#### **Amazon EC2 & Auto Scaling**
-- **Virtual Machines**: Flexible instance types and sizes
-- **Auto Scaling Groups**: Automatic capacity scaling
-- **Launch Templates**: Standardized instance configurations
-- **Spot Instances**: Cost-optimized compute capacity
+#### Amazon EKS
+- **Managed Kubernetes Control Plane**: Fully managed Kubernetes API server
+- **Node Groups**: Auto-scaling worker nodes with multiple instance types
+- **Fargate Profiles**: Serverless containers for specific namespaces
+- **Add-ons**: Core DNS, VPC CNI, EBS CSI driver, and kube-proxy
+- **OIDC Identity Provider**: Integration with AWS IAM for service accounts
+- **Encryption**: Envelope encryption for Kubernetes secrets
+- **Logging**: Control plane logging to CloudWatch
 
-#### **Amazon ECS (Elastic Container Service)**
-- **Task Management**: Docker container orchestration
-- **Service Discovery**: Built-in service mesh capabilities
-- **Fargate Integration**: Serverless container execution
-- **Application Integration**: Load balancer and service mesh integration
+#### Amazon ECS
+- **Cluster Management**: Container orchestration with capacity providers
+- **Service Discovery**: Native service discovery integration
+- **Task Definitions**: Containerized application specifications
+- **Auto Scaling**: Target tracking and step scaling policies
+- **Load Balancer Integration**: Seamless ALB integration
+- **Container Insights**: Performance monitoring and logging
 
-#### **Amazon API Gateway**
-- **REST API Management**: Complete API lifecycle with resources, methods, and integrations
-- **Authorization & Security**: Multiple authentication types (IAM, Cognito, Lambda, API Keys)
-- **Throttling & Rate Limiting**: Usage plans with quota and rate controls
-- **Monitoring & Logging**: CloudWatch integration, X-Ray tracing, access logging
-- **Performance Optimization**: Response caching, compression, regional endpoints
-- **Custom Domain Support**: SSL/TLS termination with custom certificates
+### Serverless Services
 
-#### **Application Load Balancer (ALB)**
-- **Layer 7 Routing**: HTTP/HTTPS traffic distribution
-- **SSL Termination**: Centralized certificate management
-- **Health Checks**: Application-aware health monitoring
-- **Target Groups**: Dynamic backend service management
+#### AWS Lambda
+- **Function Management**: Deployment and versioning
+- **Event Source Mappings**: Integration with SQS, Kinesis, DynamoDB
+- **Function URLs**: HTTP(S) endpoints for Lambda functions
+- **Layers**: Shared code and dependencies
+- **VPC Integration**: Access to private resources
+- **Dead Letter Queues**: Error handling and retry logic
+- **Provisioned Concurrency**: Reduced cold start latency
 
-## Layer Structure
+#### API Gateway
+- **REST APIs**: RESTful web services with resource-based routing
+- **HTTP APIs**: Low-latency, cost-effective HTTP APIs
+- **Custom Domains**: Custom domain names with SSL certificates
+- **VPC Links**: Private integration with VPC resources
+- **Authentication**: IAM, Lambda authorizers, and API keys
+- **Throttling**: Request rate limiting and burst protection
+- **Caching**: Response caching for improved performance
 
-```
-compute/
-├── README.md                    # This documentation
-├── main.tf                      # Main compute configuration
-├── variables.tf                 # Input variables
-├── outputs.tf                   # Compute layer outputs
-├── locals.tf                    # Local compute calculations
-├── providers.tf                 # Terraform and provider configuration
-└── environments/
-    ├── dev/
-    │   ├── backend.conf         # S3 backend configuration
-    │   └── terraform.auto.tfvars# Dev compute settings
-    ├── qa/
-    │   ├── backend.conf
-    │   └── terraform.auto.tfvars
-    ├── uat/
-    │   ├── backend.conf
-    │   └── terraform.auto.tfvars
-    └── prod/
-        ├── backend.conf
-        └── terraform.auto.tfvars
-```
+### Load Balancing and Content Delivery
 
-## Modules Used
+#### Application Load Balancer
+- **Layer 7 Routing**: Content-based routing with path and host rules
+- **Target Groups**: Health checking and load distribution
+- **SSL Termination**: Centralized SSL/TLS certificate management
+- **WAF Integration**: Web application firewall protection
+- **Access Logs**: Request logging to S3
 
-### **EKS Module**
+#### CloudFront
+- **Global Distribution**: Edge locations worldwide
+- **Origin Protection**: Origin access identity for S3 origins
+- **Cache Behaviors**: Customizable caching rules
+- **Lambda@Edge**: Serverless compute at edge locations
+- **Real-time Logs**: Detailed request logging
+- **Security Headers**: Response header manipulation
+
+### Platform Services
+
+#### Elastic Beanstalk
+- **Application Management**: Multi-environment application deployment
+- **Platform Versions**: Managed platform updates
+- **Health Monitoring**: Application and infrastructure health
+- **Auto Scaling**: Capacity management based on demand
+- **Rolling Deployments**: Zero-downtime application updates
+
+#### AWS Batch
+- **Compute Environments**: Managed and unmanaged compute resources
+- **Job Queues**: Priority-based job scheduling
+- **Job Definitions**: Container and multinode job specifications
+- **Spot Integration**: Cost optimization with Spot instances
+- **Array Jobs**: Parallel job execution
+
+## Configuration
+
+### Environment Variables
+
+All services support environment-specific configuration:
+
 ```hcl
-module "eks" {
-  count  = var.enable_eks ? 1 : 0
-  source = "../../modules/eks"
+# Development Environment
+environment = "dev"
+enable_eks = false
+enable_ecs = true
+lambda_log_level = "DEBUG"
 
-  # Cluster configuration
-  cluster_name    = "${var.project_name}-${var.environment}"
-  cluster_version = var.eks_cluster_version
-  
-  # Network configuration
-  vpc_id     = data.terraform_remote_state.networking.outputs.vpc_id
-  subnet_ids = data.terraform_remote_state.networking.outputs.private_subnets
-  
-  # Node groups and Fargate profiles
-  node_groups      = var.eks_node_groups
-  fargate_profiles = var.eks_fargate_profiles
-  
-  # Add-ons and marketplace components
-  cluster_addons = var.eks_addons
-  enable_aws_load_balancer_controller = var.enable_aws_load_balancer_controller
-  enable_cluster_autoscaler          = var.enable_cluster_autoscaler
-  enable_metrics_server              = var.enable_metrics_server
-  
-  tags = local.common_tags
-}
+# Production Environment
+environment = "prod"
+enable_eks = true
+enable_ecs = true
+lambda_log_level = "WARN"
 ```
 
-### **Application Load Balancer Module**
+### EKS Configuration
+
 ```hcl
-module "alb" {
-  count  = var.enable_load_balancer ? 1 : 0
-  source = "../../modules/alb"
+eks_cluster_version = "1.28"
+eks_cluster_endpoint_private_access = true
+eks_cluster_endpoint_public_access = false
 
-  name    = "${var.project_name}-${var.environment}"
-  vpc_id  = data.terraform_remote_state.networking.outputs.vpc_id
-  subnets = data.terraform_remote_state.networking.outputs.public_subnets
-  
-  # Security groups
-  security_groups = [
-    data.terraform_remote_state.security.outputs.security_group_ids["alb"]
-  ]
-  
-  # Target groups and listeners
-  target_groups = var.target_groups
-  listeners     = var.alb_listeners
-  
-  tags = local.common_tags
-}
-```
-
-### **Auto Scaling Group Module**
-```hcl
-module "asg" {
-  count  = var.enable_auto_scaling ? 1 : 0
-  source = "../../modules/asg"
-
-  name = "${var.project_name}-${var.environment}"
-  
-  # Launch template configuration
-  launch_template = {
-    name_prefix   = "${var.project_name}-${var.environment}-"
-    image_id      = var.ami_id
-    instance_type = var.instance_type
-    key_name      = var.key_pair_name
-    
-    vpc_security_group_ids = [
-      data.terraform_remote_state.security.outputs.security_group_ids["ec2"]
-    ]
-    
-    iam_instance_profile = data.terraform_remote_state.security.outputs.service_roles["ec2"].instance_profile_name
-    user_data           = base64encode(var.user_data_script)
-  }
-  
-  # Auto Scaling configuration
-  min_size         = var.asg_min_size
-  max_size         = var.asg_max_size
-  desired_capacity = var.asg_desired_capacity
-  
-  vpc_zone_identifier = data.terraform_remote_state.networking.outputs.private_subnets
-  
-  tags = local.common_tags
-}
-```
-
-### **Lambda Module**
-```hcl
-module "lambda" {
-  count  = length(var.lambda_functions) > 0 ? 1 : 0
-  source = "../../modules/lambda"
-
-  functions = var.lambda_functions
-  
-  # VPC configuration
-  vpc_config = {
-    subnet_ids         = data.terraform_remote_state.networking.outputs.private_subnets
-    security_group_ids = [data.terraform_remote_state.security.outputs.security_group_ids["lambda"]]
-  }
-  
-  # IAM role
-  execution_role_arn = data.terraform_remote_state.security.outputs.service_roles["lambda"].arn
-  
-  tags = local.common_tags
-}
-```
-
-### **ECS Module**
-```hcl
-module "ecs" {
-  count  = var.enable_ecs ? 1 : 0
-  source = "../../modules/ecs"
-
-  cluster_name = "${var.project_name}-${var.environment}"
-  
-  # Capacity providers
-  capacity_providers = var.ecs_capacity_providers
-  
-  # Container insights
-  container_insights = var.enable_container_insights
-
-  tags = local.common_tags
-}
-```
-
-### **API Gateway Module**
-```hcl
-module "api_gateway" {
-  count  = var.enable_api_gateway ? 1 : 0
-  source = "../../modules/api-gateway"
-
-  api_name        = "${var.project_name}-${var.environment}-api"
-  api_description = "REST API Gateway for ${var.project_name}"
-  stage_name      = var.api_gateway_stage_name
-
-  # Security and performance
-  enable_access_logging    = var.api_gateway_enable_access_logging
-  enable_xray_tracing     = var.api_gateway_enable_xray_tracing
-  cache_cluster_enabled   = var.api_gateway_cache_cluster_enabled
-  
-  # API structure
-  api_resources     = var.api_gateway_resources
-  api_methods       = var.api_gateway_methods
-  usage_plans       = var.api_gateway_usage_plans
-  api_keys          = var.api_gateway_api_keys
-  
-  # Custom domain (optional)
-  domain_name       = var.api_gateway_domain_name
-  certificate_arn   = var.api_gateway_certificate_arn
-  
-  tags = local.common_tags
-}
-```
-
-## EKS Configuration
-
-### 🚀 **Kubernetes Cluster Setup**
-
-#### **Production EKS Configuration**
-```hcl
-# Cluster settings
-eks_cluster_version = "1.31"
-eks_endpoint_private_access = true
-eks_endpoint_public_access = false  # Private only
-
-# Logging for audit and compliance
-eks_cluster_log_types = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
-eks_log_retention_days = 90
-
-# Node groups with different instance types
 eks_node_groups = {
   general = {
     instance_types = ["m5.large", "m5.xlarge"]
-    capacity_type  = "ON_DEMAND"
-    desired_size   = 3
-    max_size      = 10
-    min_size      = 3
-    disk_size     = 100
-    
-    labels = {
-      role = "general"
-      environment = "prod"
+    scaling_config = {
+      desired_size = 3
+      max_size     = 10
+      min_size     = 1
     }
+    capacity_type = "ON_DEMAND"
   }
   
-  monitoring = {
-    instance_types = ["t3.medium"]
-    capacity_type  = "ON_DEMAND"
-    desired_size   = 2
-    max_size      = 3
-    min_size      = 1
-    
-    labels = {
-      role = "monitoring"
+  spot = {
+    instance_types = ["m5.large", "m5.xlarge", "m4.large"]
+    scaling_config = {
+      desired_size = 0
+      max_size     = 20
+      min_size     = 0
+    }
+    capacity_type = "SPOT"
+  }
+}
+```
+
+### ECS Configuration
+
+```hcl
+ecs_capacity_providers = ["FARGATE", "FARGATE_SPOT", "EC2"]
+ecs_enable_container_insights = true
+
+ecs_services = {
+  web-app = {
+    task_definition = {
+      family = "web-app"
+      cpu    = "512"
+      memory = "1024"
+      
+      containers = [{
+        name  = "web"
+        image = "nginx:latest"
+        portMappings = [{
+          containerPort = 80
+          protocol     = "tcp"
+        }]
+      }]
     }
     
-    taints = [
-      {
-        key    = "monitoring"
-        value  = "true"
-        effect = "NO_SCHEDULE"
-      }
-    ]
-  }
-}
-
-# Fargate profiles for serverless workloads
-eks_fargate_profiles = {
-  system = {
-    selectors = [
-      {
-        namespace = "kube-system"
-        labels = {}
-      }
-    ]
-  }
-  
-  production_apps = {
-    selectors = [
-      {
-        namespace = "prod-apps"
-        labels = {
-          compute-type = "fargate"
-        }
-      }
-    ]
-  }
-}
-```
-
-#### **Development EKS Configuration**
-```hcl
-# Cost-optimized for development
-eks_cluster_version = "1.31"
-eks_endpoint_private_access = true
-eks_endpoint_public_access = true  # Accessible for development
-
-# Minimal logging
-eks_cluster_log_types = ["api", "audit"]
-eks_log_retention_days = 7
-
-# Single node group with SPOT instances
-eks_node_groups = {
-  general = {
-    instance_types = ["t3.small", "t3.medium"]
-    capacity_type  = "SPOT"  # Cost optimization
-    desired_size   = 1
-    max_size      = 3
-    min_size      = 1
-    disk_size     = 20
+    desired_count = 2
     
-    labels = {
-      role = "general"
-      environment = "dev"
+    load_balancer = {
+      alb_key          = "main"
+      target_group_key = "web"
+      container_name   = "web"
+      container_port   = 80
     }
   }
 }
 ```
 
-## API Gateway Configuration
+### Lambda Configuration
 
-### 🚀 **REST API Setup**
-
-#### **Basic API Gateway**
 ```hcl
-# Enable API Gateway with basic configuration
-enable_api_gateway = true
-api_gateway_stage_name = "v1"
-api_gateway_endpoint_types = ["REGIONAL"]
-
-# Basic API structure
-api_gateway_resources = {
-  api = {
-    path_part = "api"
-  }
-  health = {
-    path_part = "health"
-    parent_id = "api"
-  }
-}
-
-# Health check endpoint
-api_gateway_methods = {
-  health_check = {
-    resource_key  = "health"
-    http_method   = "GET"
-    authorization = "NONE"
-    
-    integration = {
-      type = "MOCK"
-      request_templates = {
-        "application/json" = "{\"statusCode\": 200}"
-      }
-    }
-    
-    responses = {
-      "200" = {
-        status_code = "200"
-        integration_response = {
-          response_templates = {
-            "application/json" = "{\"status\": \"healthy\"}"
-          }
-        }
-      }
-    }
-  }
-}
-```
-
-#### **Production API with Authentication**
-```hcl
-# Production API Gateway with full features
-enable_api_gateway = true
-api_gateway_stage_name = "v1"
-api_gateway_enable_access_logging = true
-api_gateway_enable_xray_tracing = true
-api_gateway_cache_cluster_enabled = true
-
-# Usage plans for rate limiting
-api_gateway_usage_plans = {
-  basic_plan = {
-    name = "Basic Plan"
-    api_stages = [{
-      stage = "v1"
-      throttle = {
-        path        = "/*/*"
-        rate_limit  = 100
-        burst_limit = 200
-      }
-    }]
-    quota_settings = {
-      limit  = 10000
-      period = "MONTH"
-    }
-  }
-}
-
-# API keys for authentication
-api_gateway_api_keys = {
-  client_key = {
-    name        = "client-api-key"
-    description = "Client application API key"
-    enabled     = true
-  }
-}
-```
-
-#### **Lambda Integration Example**
-```hcl
-# API method with Lambda backend
-api_gateway_methods = {
-  get_users = {
-    resource_key     = "users"
-    http_method      = "GET"
-    authorization    = "AWS_IAM"
-    api_key_required = true
-    
-    integration = {
-      type = "AWS_PROXY"
-      integration_http_method = "POST"
-      uri = "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${aws_lambda_function.users.arn}/invocations"
-    }
-    
-    responses = {
-      "200" = {
-        status_code = "200"
-        integration_response = {}
-      }
-    }
-  }
-}
-```
-
-### 🔧 **Marketplace Add-ons**
-
-#### **AWS Load Balancer Controller**
-```hcl
-# Latest version for ALB/NLB ingress
-enable_aws_load_balancer_controller = true
-aws_load_balancer_controller_chart_version = "1.8.1"
-aws_load_balancer_controller_namespace = "kube-system"
-```
-
-#### **Cluster Autoscaler**
-```hcl
-# Automatic node scaling based on pod requirements
-enable_cluster_autoscaler = true
-cluster_autoscaler_chart_version = "9.37.0"
-cluster_autoscaler_namespace = "kube-system"
-```
-
-#### **Metrics Server**
-```hcl
-# Resource utilization metrics for HPA
-enable_metrics_server = true
-metrics_server_chart_version = "3.12.1"
-metrics_server_namespace = "kube-system"
-```
-
-## Lambda Configuration
-
-### ⚡ **Serverless Functions**
-
-#### **API Processing Function**
-```hcl
-api_processor = {
-  description = "API request processing function"
-  runtime     = "python3.11"
-  handler     = "lambda_function.lambda_handler"
-  filename    = "api_processor.zip"
-  memory_size = 256
-  timeout     = 30
-  
-  environment_variables = {
-    DATABASE_URL = data.terraform_remote_state.data.outputs.rds_endpoints["primary_db"].endpoint
-    CACHE_URL    = data.terraform_remote_state.data.outputs.elasticache_endpoints["redis"].primary_endpoint
-  }
-}
-```
-
-#### **Data Processing Function**
-```hcl
-data_processor = {
-  description = "Batch data processing function"
-  runtime     = "python3.11"
-  handler     = "processor.handler"
-  s3_bucket   = data.terraform_remote_state.data.outputs.s3_buckets["app_data"].id
-  s3_key      = "functions/data_processor.zip"
-  memory_size = 1024
-  timeout     = 300
-  
-  environment_variables = {
-    OUTPUT_BUCKET = data.terraform_remote_state.data.outputs.s3_buckets["processed_data"].id
-  }
-}
-```
-
-## Load Balancer Configuration
-
-### 🌐 **Application Load Balancer**
-
-#### **Production ALB Setup**
-```hcl
-target_groups = {
-  app = {
-    port     = 80
-    protocol = "HTTP"
-    health_check = {
-      enabled             = true
-      healthy_threshold   = 2
-      interval            = 30
-      matcher             = "200"
-      path                = "/health"
-      port                = "traffic-port"
-      protocol            = "HTTP"
-      timeout             = 5
-      unhealthy_threshold = 2
-    }
-  }
-  
-  api = {
-    port     = 8080
-    protocol = "HTTP"
-    health_check = {
-      enabled             = true
-      healthy_threshold   = 2
-      interval            = 15
-      matcher             = "200,404"
-      path                = "/api/health"
-      port                = "traffic-port"
-      protocol            = "HTTP"
-      timeout             = 5
-      unhealthy_threshold = 3
-    }
-  }
-}
-
-alb_listeners = {
-  https = {
-    port     = 443
-    protocol = "HTTPS"
-    default_action = {
-      type             = "forward"
-      target_group_arn = "app"
-    }
-  }
-  
-  http_redirect = {
-    port     = 80
-    protocol = "HTTP"
-    default_action = {
-      type = "redirect"
-      redirect = {
-        port        = "443"
-        protocol    = "HTTPS"
-        status_code = "HTTP_301"
-      }
-    }
-  }
-}
-```
-
-## Auto Scaling Configuration
-
-### 📈 **EC2 Auto Scaling**
-
-#### **Web Application ASG**
-```hcl
-# Launch template
-ami_id        = "ami-0abcdef1234567890"  # Latest Amazon Linux 2
-instance_type = "t3.medium"
-key_pair_name = "myapp-keypair"
-
-# Auto Scaling settings
-asg_min_size         = 2
-asg_max_size         = 10
-asg_desired_capacity = 3
-
-# User data for application setup
-user_data_script = <<-EOF
-#!/bin/bash
-yum update -y
-yum install -y docker
-systemctl start docker
-systemctl enable docker
-usermod -a -G docker ec2-user
-
-# Install application
-docker pull myapp:latest
-docker run -d -p 80:8080 myapp:latest
-EOF
-
-# EBS volumes
-ebs_volumes = [
-  {
-    device_name = "/dev/xvda"
-    ebs = {
-      volume_size           = 50
-      volume_type           = "gp3"
-      delete_on_termination = true
-      encrypted             = true
-    }
-  }
-]
-```
-
-## Environment-Specific Configurations
-
-### 🌍 **Development Environment**
-```hcl
-# Cost-optimized compute resources
-enable_eks = true
-enable_load_balancer = true
-enable_auto_scaling = false  # Manual scaling for dev
-enable_ecs = false
-enable_container_insights = false
-
-# EKS with SPOT instances
-eks_node_groups = {
-  general = {
-    instance_types = ["t3.small", "t3.medium"]
-    capacity_type  = "SPOT"
-    desired_size   = 1
-    max_size      = 3
-    min_size      = 1
-  }
-}
-
-# Minimal Lambda functions
 lambda_functions = {
-  dev_api = {
-    memory_size = 128
+  api-handler = {
+    function_name = "api-handler"
+    runtime      = "python3.11"
+    handler      = "lambda_function.lambda_handler"
+    filename     = "api-handler.zip"
+    
+    memory_size = 256
     timeout     = 30
+    
+    environment_variables = {
+      ENVIRONMENT = var.environment
+      LOG_LEVEL  = var.lambda_log_level
+    }
+    
+    vpc_config = {
+      subnet_ids         = data.terraform_remote_state.networking.outputs.private_subnet_ids
+      security_group_ids = [data.terraform_remote_state.networking.outputs.security_group_ids["lambda"]]
+    }
   }
 }
 ```
 
-### 🏭 **Production Environment**
+### API Gateway Configuration
+
 ```hcl
-# Full compute suite with high availability
-enable_eks = true
-enable_load_balancer = true
-enable_auto_scaling = true
-enable_ecs = true
-enable_container_insights = true
-
-# Production EKS with ON_DEMAND instances
-eks_node_groups = {
-  general    = { /* production configuration */ }
-  monitoring = { /* dedicated monitoring nodes */ }
+api_gateway_rest_apis = {
+  main = {
+    name        = "main-api"
+    description = "Main REST API"
+    
+    endpoint_configuration = {
+      types = ["REGIONAL"]
+    }
+  }
 }
 
-# Comprehensive Lambda setup
-lambda_functions = {
-  api_processor    = { /* production API function */ }
-  data_processor   = { /* batch processing function */ }
-  notification_svc = { /* notification service */ }
-}
-
-# Production ALB with multiple target groups
-target_groups = {
-  app     = { /* main application */ }
-  api     = { /* API services */ }
-  admin   = { /* admin interface */ }
+api_gateway_http_apis = {
+  fast = {
+    name        = "fast-api"
+    description = "High-performance HTTP API"
+    
+    cors_configuration = {
+      allow_origins = ["*"]
+      allow_methods = ["GET", "POST", "PUT", "DELETE"]
+      allow_headers = ["content-type", "authorization"]
+    }
+  }
 }
 ```
 
-## Key Outputs
+## Security
 
-```hcl
-# EKS Information
-output "eks_cluster_endpoint" {
-  description = "Endpoint for your Kubernetes API server"
-  value       = var.enable_eks ? module.eks[0].cluster_endpoint : null
-}
+### Network Security
+- **VPC Integration**: All services deployed within private subnets
+- **Security Groups**: Least-privilege network access control
+- **WAF Protection**: Web application firewall for public-facing services
+- **SSL/TLS**: End-to-end encryption with AWS Certificate Manager
 
-output "eks_cluster_security_group_id" {
-  description = "Security group ID attached to the EKS cluster"
-  value       = var.enable_eks ? module.eks[0].cluster_security_group_id : null
-}
+### Identity and Access Management
+- **IAM Roles**: Service-specific roles with minimal permissions
+- **Service Accounts**: EKS service account integration with IAM
+- **Secrets Management**: Integration with AWS Secrets Manager
+- **Encryption**: KMS encryption for all data at rest
 
-# Load Balancer Information
-output "load_balancer_dns_name" {
-  description = "DNS name of the load balancer"
-  value       = var.enable_load_balancer ? module.alb[0].lb_dns_name : null
-}
+### Monitoring and Compliance
+- **CloudWatch Logs**: Centralized logging for all services
+- **X-Ray Tracing**: Distributed tracing for Lambda and API Gateway
+- **Container Insights**: ECS and EKS performance monitoring
+- **Access Logging**: ALB and CloudFront access logs
 
-output "load_balancer_zone_id" {
-  description = "Zone ID of the load balancer"
-  value       = var.enable_load_balancer ? module.alb[0].lb_zone_id : null
-}
+## Monitoring and Observability
 
-# Auto Scaling Information
-output "autoscaling_group_arn" {
-  description = "ARN of the Auto Scaling Group"
-  value       = var.enable_auto_scaling ? module.asg[0].autoscaling_group_arn : null
-}
+### Metrics
+- **CloudWatch Metrics**: CPU, memory, network, and custom metrics
+- **Application Metrics**: Request latency, error rates, throughput
+- **Infrastructure Metrics**: Node health, cluster status, capacity utilization
 
-# Lambda Information
-output "lambda_function_arns" {
-  description = "Map of Lambda function ARNs"
-  value       = length(var.lambda_functions) > 0 ? module.lambda[0].function_arns : {}
-}
+### Logging
+- **Structured Logging**: JSON-formatted logs with consistent fields
+- **Log Aggregation**: CloudWatch Logs with retention policies
+- **Log Insights**: Advanced log querying and analysis
 
-# API Gateway Information
-output "api_gateway_rest_api_id" {
-  description = "ID of the REST API"
-  value       = var.enable_api_gateway ? module.api_gateway[0].rest_api_id : null
-}
+### Tracing
+- **X-Ray Integration**: End-to-end request tracing
+- **Service Map**: Visual representation of service dependencies
+- **Performance Analysis**: Latency bottleneck identification
 
-output "api_gateway_stage_invoke_url" {
-  description = "URL to invoke the API pointing to the stage"
-  value       = var.enable_api_gateway ? module.api_gateway[0].stage_invoke_url : null
-}
+## Scaling and Performance
 
-output "api_gateway_execution_arn" {
-  description = "Execution ARN for Lambda permissions"
-  value       = var.enable_api_gateway ? module.api_gateway[0].rest_api_execution_arn : null
-}
-```
+### Auto Scaling
+- **Horizontal Pod Autoscaler**: EKS pod scaling based on metrics
+- **Cluster Autoscaler**: EKS node group scaling
+- **ECS Auto Scaling**: Service and capacity provider scaling
+- **Lambda Concurrency**: Reserved and provisioned concurrency
 
-## Performance Optimization
+### Performance Optimization
+- **Caching**: CloudFront and API Gateway caching
+- **Connection Pooling**: Database connection optimization
+- **CDN**: Global content delivery with edge caching
+- **Load Balancing**: Intelligent traffic distribution
 
-### 🚀 **Compute Performance**
+## Disaster Recovery
 
-#### **EKS Optimization**
-- **Instance Types**: Use compute-optimized instances for CPU-intensive workloads
-- **Node Groups**: Separate node groups for different workload types
-- **Horizontal Pod Autoscaler**: Automatic pod scaling based on metrics
-- **Cluster Autoscaler**: Automatic node scaling based on pod requirements
+### Backup and Recovery
+- **Multi-AZ Deployment**: High availability across availability zones
+- **Cross-Region Replication**: Data replication for disaster recovery
+- **Automated Backups**: Scheduled backup policies
+- **Point-in-Time Recovery**: Granular recovery options
 
-#### **Lambda Optimization**
-- **Memory Allocation**: Right-size memory for optimal performance/cost ratio
-- **Cold Start Reduction**: Use provisioned concurrency for low-latency functions
-- **VPC Configuration**: Avoid VPC when not needed to reduce cold start time
-- **Function Packaging**: Minimize deployment package size
-
-#### **Load Balancer Optimization**
-- **Target Group Health Checks**: Optimize interval and timeout settings
-- **Connection Draining**: Configure appropriate deregistration delay
-- **Sticky Sessions**: Use when required for stateful applications
-- **SSL/TLS**: Optimize cipher suites and certificate handling
-
-### 📊 **Monitoring and Observability**
-
-#### **CloudWatch Metrics**
-- **EKS**: Node CPU/memory utilization, pod count, cluster health
-- **Lambda**: Duration, error rate, concurrent executions, throttles
-- **ALB**: Request count, response time, error rates, target health
-- **ASG**: Instance count, CPU utilization, scaling activities
-
-#### **Custom Metrics**
-- Application-specific business metrics
-- Custom CloudWatch metrics from applications
-- Prometheus metrics collection in EKS
-- Application Performance Monitoring (APM) integration
+### Business Continuity
+- **Health Checks**: Automated failure detection
+- **Failover**: Automatic traffic redirection
+- **Circuit Breakers**: Fault isolation and recovery
+- **Blue/Green Deployments**: Zero-downtime deployments
 
 ## Cost Optimization
 
-### 💰 **Compute Cost Management**
+### Resource Optimization
+- **Spot Instances**: Cost-effective compute for fault-tolerant workloads
+- **Fargate Spot**: Serverless containers with up to 70% cost savings
+- **Reserved Capacity**: Predictable workload cost optimization
+- **Right Sizing**: Optimal instance and container sizing
 
-#### **EKS Cost Optimization**
-- **SPOT Instances**: Use for development and fault-tolerant workloads
-- **Right Sizing**: Monitor and adjust node instance types
-- **Cluster Autoscaler**: Automatically scale down unused nodes
-- **Fargate**: Use for workloads with variable or unpredictable traffic
-
-#### **Lambda Cost Optimization**
-- **Memory Optimization**: Find optimal memory/performance ratio
-- **Timeout Settings**: Set appropriate timeouts to avoid unnecessary charges
-- **Architecture**: Use ARM-based Graviton2 processors when possible
-- **Reserved Concurrency**: Use only when necessary to avoid blocking other functions
-
-#### **EC2 Cost Optimization**
-- **Reserved Instances**: Purchase for stable, predictable workloads
-- **SPOT Instances**: Use for fault-tolerant applications
-- **Right Sizing**: Regular analysis and adjustment of instance types
-- **Scheduled Scaling**: Scale down during off-hours for non-production environments
+### Usage Monitoring
+- **Cost Allocation Tags**: Resource cost tracking
+- **Usage Reports**: Detailed cost analysis
+- **Budget Alerts**: Cost threshold notifications
+- **Savings Plans**: Commitment-based pricing
 
 ## Deployment
 
-### **Prerequisites**
-1. **Networking Layer**: VPC and subnets must exist
-2. **Security Layer**: IAM roles and security groups must be configured
-3. **Data Layer**: Database endpoints available (if required)
+### Prerequisites
+1. Networking layer deployed
+2. Security layer deployed
+3. Data layer deployed
 
-### **Deployment Commands**
-```bash
-# Initialize and deploy compute layer
-cd layers/compute/environments/prod
-terraform init -backend-config=backend.conf
-terraform plan -var-file=terraform.auto.tfvars
-terraform apply -var-file=terraform.auto.tfvars
-```
+### Deployment Steps
 
-### **EKS Post-Deployment**
-```bash
-# Configure kubectl
-aws eks update-kubeconfig --region us-east-1 --name myproject-prod
+1. **Configure Variables**: Set environment-specific variables
+   ```bash
+   cd layers/compute/environments/dev
+   # Edit terraform.auto.tfvars
+   ```
 
-# Verify cluster access
-kubectl get nodes
-kubectl get pods --all-namespaces
+2. **Initialize Terraform**: 
+   ```bash
+   terraform init -backend-config=backend.conf
+   ```
 
-# Deploy sample applications
-kubectl apply -f k8s-manifests/
-```
+3. **Plan Deployment**:
+   ```bash
+   terraform plan
+   ```
 
-## Security Best Practices
+4. **Deploy Resources**:
+   ```bash
+   terraform apply
+   ```
 
-### 🔒 **Compute Security**
+### Environment Management
 
-#### **EKS Security**
-- **RBAC**: Implement Role-Based Access Control
-- **Network Policies**: Restrict pod-to-pod communication
-- **Pod Security Standards**: Enforce security contexts and policies
-- **Image Scanning**: Scan container images for vulnerabilities
+Each environment has separate configuration:
+- `environments/dev/`: Development environment
+- `environments/qa/`: Quality assurance environment  
+- `environments/uat/`: User acceptance testing environment
+- `environments/prod/`: Production environment
 
-#### **Lambda Security**
-- **Least Privilege**: Minimal IAM permissions
-- **Environment Variables**: Use Systems Manager Parameter Store or Secrets Manager
-- **VPC Configuration**: Only when needed for data access
-- **Runtime Security**: Keep runtime versions updated
+## Outputs
 
-#### **EC2 Security**
-- **Security Groups**: Restrictive inbound rules
-- **Instance Metadata**: Use IMDSv2 only
-- **Systems Manager**: Use Session Manager instead of SSH
-- **Patch Management**: Automated patching with Systems Manager
+The layer provides comprehensive outputs for integration:
 
-#### **API Gateway Security**
-- **Authentication**: Multiple methods (IAM, Cognito, Lambda authorizers, API Keys)
-- **Authorization**: Resource-based policies and method-level permissions
-- **Request Validation**: Schema-based input validation and sanitization
-- **Rate Limiting**: Usage plans with quotas and throttling
-- **WAF Integration**: Web Application Firewall for additional protection
-- **CORS Configuration**: Proper cross-origin resource sharing setup
+### Service Endpoints
+- EKS cluster endpoint and certificate authority
+- ECS cluster ARN and service ARNs
+- Lambda function ARNs and invoke ARNs
+- API Gateway endpoints and execution ARNs
+- Load balancer DNS names and hosted zone IDs
+- CloudFront distribution domain names
+
+### Security Integration
+- IAM role ARNs for cross-service access
+- Security group IDs for network integration
+- KMS key IDs for encryption
+
+### Monitoring Integration
+- CloudWatch log group names
+- X-Ray tracing configurations
+- SNS topic ARNs for alerts
+
+## Best Practices
+
+### Security
+- Use least-privilege IAM policies
+- Enable encryption at rest and in transit
+- Implement network segmentation
+- Regular security assessments
+- Secrets rotation automation
+
+### Performance  
+- Implement caching strategies
+- Use connection pooling
+- Optimize container images
+- Monitor and tune scaling policies
+- Regular performance testing
+
+### Cost Management
+- Use Spot instances where appropriate
+- Implement resource tagging
+- Regular cost reviews
+- Automated rightsizing
+- Reserved capacity planning
+
+### Operational Excellence
+- Infrastructure as Code
+- Automated testing
+- Monitoring and alerting
+- Incident response procedures
+- Regular disaster recovery testing
 
 ## Troubleshooting
 
-### 🔧 **Common Issues**
+### Common Issues
 
-#### **EKS Troubleshooting**
+#### EKS Node Registration
 ```bash
-# Check cluster status
-kubectl get cs
-
 # Check node status
-kubectl describe nodes
+kubectl get nodes
 
-# Check pod logs
-kubectl logs -f deployment/myapp
+# Describe node for events
+kubectl describe node <node-name>
 
-# Check cluster autoscaler logs
-kubectl logs -f deployment/cluster-autoscaler -n kube-system
+# Check EKS cluster logs
+aws logs describe-log-groups --log-group-name-prefix /aws/eks
 ```
 
-#### **Lambda Troubleshooting**
-- **CloudWatch Logs**: Check function execution logs
-- **X-Ray Tracing**: Enable for performance analysis
-- **Dead Letter Queues**: Configure for failed function executions
-- **VPC Connectivity**: Verify security groups and subnet routing
+#### ECS Service Deployment
+```bash
+# Check service status
+aws ecs describe-services --cluster <cluster-name> --services <service-name>
 
-## Related Documentation
+# Check task definition
+aws ecs describe-task-definition --task-definition <task-def-arn>
 
-- [Main Project README](../../README.md)
-- [Networking Layer README](../networking/README.md)
-- [Security Layer README](../security/README.md)
-- [Data Layer README](../data/README.md)
-- [EKS Module Documentation](../../modules/eks/README.md)
-- [AWS Compute Best Practices](https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html)
+# View service events
+aws ecs describe-services --cluster <cluster-name> --services <service-name> --query 'services[0].events'
+```
 
----
+#### Lambda Function Issues
+```bash
+# Check function logs
+aws logs describe-log-groups --log-group-name-prefix /aws/lambda
 
-## 👤 Author
+# View function configuration
+aws lambda get-function --function-name <function-name>
 
-**Diego A. Zarate** - *Compute Infrastructure & Container Specialist*
+# Check execution role
+aws lambda get-function-configuration --function-name <function-name> --query 'Role'
+```
 
----
-
-> ⚙️ **Compute Foundation**: This layer provides scalable, secure, and cost-effective compute resources for your applications. Choose the right compute service based on your workload characteristics and requirements.
+### Support Resources
+- AWS Documentation: Service-specific guides
+- CloudWatch Logs: Centralized logging
+- AWS Support: Technical assistance
+- Community Forums: Peer support and solutions
