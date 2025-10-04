@@ -1,0 +1,21 @@
+org_code    = "acme"
+environment = "uat"
+location    = "eastus"
+workload_name = "platform"
+log_retention_days = 30
+key_vault_sku = "standard"
+policy_enabled = true
+mgmt_groups_enabled = false
+
+identities = {
+  uatapp = {
+    roles = [
+      { scope = "/subscriptions/00000000-0000-0000-0000-000000000000", role_definition_name = "Reader" }
+    ]
+  }
+}
+
+tags = {
+  cost-center = "cc123"
+  owner       = "uat-team"
+}

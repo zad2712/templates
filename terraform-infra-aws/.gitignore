@@ -1,0 +1,39 @@
+# Terraform
+**/.terraform/
+**/.terraform.lock.hcl
+**/terraform.tfstate
+**/terraform.tfstate.*
+**/terraform.tfplan
+**/terraform.tfplan.*
+
+# Generated backend configurations (keep template)
+**/backend.conf
+!backend.conf.template
+
+# Local environment files
+local.env
+.env.local
+.env
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Temporary files
+/tmp/
+*.tmp
+*.bak

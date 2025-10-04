@@ -1,0 +1,23 @@
+org_code    = "acme"
+environment = "prod"
+location    = "eastus"
+workload_name = "platform"
+log_retention_days = 60
+key_vault_sku = "premium"
+policy_enabled = true
+mgmt_groups_enabled = true
+
+identities = {
+  ops = {
+    roles = [
+      { scope = "/subscriptions/00000000-0000-0000-0000-000000000000", role_definition_name = "Reader" }
+      { scope = "/subscriptions/00000000-0000-0000-0000-000000000000", role_definition_name = "Monitoring Reader" }
+    ]
+  }
+}
+
+tags = {
+  cost-center = "cc999"
+  owner       = "platform-team"
+  criticality = "high"
+}

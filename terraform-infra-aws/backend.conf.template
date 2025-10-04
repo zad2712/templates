@@ -1,0 +1,6 @@
+bucket         = "{{PROJECT_NAME}}-terraform-state-{{ENVIRONMENT}}"
+key            = "{{LAYER}}/{{ENVIRONMENT}}/terraform.tfstate"
+region         = "{{AWS_REGION}}"
+profile        = "{{AWS_PROFILE}}"
+dynamodb_table = "{{PROJECT_NAME}}-terraform-locks-{{ENVIRONMENT}}"
+encrypt        = true
