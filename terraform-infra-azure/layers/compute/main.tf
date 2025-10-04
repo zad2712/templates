@@ -304,6 +304,113 @@ module "app_service" {
 }
 
 # =============================================================================
+# AZURE WEB APPLICATIONS (Modern App Service Implementation)
+# =============================================================================
+
+module "web_app" {
+  for_each = var.web_apps
+
+  source = "../../modules/web-app"
+
+  # Basic Configuration
+  name                = "${var.project_name}-${var.environment}-${each.key}"
+  resource_group_name = module.resource_group.name
+  location           = var.location
+
+  # App Service Plan Configuration
+  os_type                      = each.value.os_type
+  sku_name                    = each.value.sku_name
+  worker_count                = each.value.worker_count
+  enable_zone_redundancy      = each.value.enable_zone_redundancy
+  per_site_scaling_enabled    = each.value.per_site_scaling_enabled
+
+  # Security Configuration
+  https_only                    = each.value.https_only
+  client_certificate_enabled   = each.value.client_certificate_enabled
+  client_certificate_mode      = each.value.client_certificate_mode
+  public_network_access_enabled = each.value.public_network_access_enabled && !var.enable_private_endpoints
+  minimum_tls_version          = each.value.minimum_tls_version
+
+  # Network Configuration
+  virtual_network_subnet_id = local.networking_rg_outputs.app_services_subnet_id
+  vnet_route_all_enabled   = var.enable_private_endpoints
+
+  # Identity Configuration
+  enable_managed_identity      = each.value.enable_managed_identity
+  identity_type               = each.value.identity_type
+  user_assigned_identity_ids  = each.value.identity_type != "SystemAssigned" ? [local.security_rg_outputs.managed_identity_ids["web-app"]] : []
+
+  # Application Stack Configuration
+  application_stack         = each.value.application_stack
+  windows_application_stack = each.value.windows_application_stack
+
+  # Site Configuration
+  always_on                = each.value.always_on
+  http2_enabled           = each.value.http2_enabled
+  websockets_enabled      = each.value.websockets_enabled
+  ftps_state             = each.value.ftps_state
+  health_check_path      = each.value.health_check_path
+  auto_heal_enabled      = each.value.auto_heal_enabled
+  auto_heal_setting      = each.value.auto_heal_setting
+
+  # Application Settings
+  app_settings = merge(each.value.app_settings, {
+    "APPLICATIONINSIGHTS_CONNECTION_STRING" = var.enable_monitoring && each.value.enable_application_insights ? local.security_rg_outputs.application_insights_connection_string : ""
+    "APPINSIGHTS_INSTRUMENTATIONKEY"       = var.enable_monitoring && each.value.enable_application_insights ? local.security_rg_outputs.application_insights_instrumentation_key : ""
+    "WEBSITE_VNET_ROUTE_ALL"              = var.enable_private_endpoints ? "1" : "0"
+  })
+
+  # Connection Strings
+  connection_strings = each.value.connection_strings
+
+  # CORS Configuration
+  cors_configuration = each.value.cors_configuration
+
+  # IP Restrictions
+  ip_restrictions = each.value.ip_restrictions
+
+  # Custom Domains
+  custom_domains = each.value.custom_domains
+
+  # Private Endpoint Configuration
+  enable_private_endpoint    = var.enable_private_endpoints
+  private_endpoint_subnet_id = var.enable_private_endpoints ? local.networking_rg_outputs.private_endpoints_subnet_id : null
+  private_dns_zone_id        = var.enable_private_endpoints ? local.networking_rg_outputs.private_dns_zone_ids["privatelink.azurewebsites.net"] : null
+
+  # Application Insights Configuration
+  enable_application_insights = var.enable_monitoring && each.value.enable_application_insights
+  application_insights_type   = each.value.application_insights_type
+  log_analytics_workspace_id  = var.enable_monitoring ? local.security_rg_outputs.log_analytics_workspace_id : null
+
+  # Backup Configuration
+  backup_configuration = each.value.backup_configuration
+
+  # Authentication Configuration
+  enable_authentication = each.value.enable_authentication
+  auth_settings        = each.value.auth_settings
+
+  # Diagnostic Settings
+  enable_diagnostic_settings = var.enable_diagnostic_settings
+  diagnostic_settings = {
+    logs = [
+      "AppServiceAppLogs",
+      "AppServiceAuditLogs", 
+      "AppServiceConsoleLogs",
+      "AppServiceHTTPLogs",
+      "AppServicePlatformLogs"
+    ]
+    metrics = ["AllMetrics"]
+  }
+
+  tags = merge(local.common_tags, {
+    Service = "WebApp"
+    Type    = each.value.os_type
+  })
+
+  depends_on = [module.resource_group]
+}
+
+# =============================================================================
 # AZURE CONTAINER INSTANCES
 # =============================================================================
 
@@ -494,11 +601,28 @@ resource "azurerm_role_assignment" "function_app_key_vault_secrets_user" {
   principal_id         = local.security_rg_outputs.managed_identity_principal_ids["function-app"]
 }
 
-# App Service Role Assignments
+# App Service Role Assignments (Legacy)
 resource "azurerm_role_assignment" "app_service_key_vault_secrets_user" {
   for_each = var.app_services
 
   scope                = local.security_rg_outputs.key_vault_id
   role_definition_name = "Key Vault Secrets User"
   principal_id         = local.security_rg_outputs.managed_identity_principal_ids["app-service"]
+}
+
+# Web App Role Assignments
+resource "azurerm_role_assignment" "web_app_key_vault_secrets_user" {
+  for_each = var.web_apps
+
+  scope                = local.security_rg_outputs.key_vault_id
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = module.web_app[each.key].web_app_principal_id
+}
+
+resource "azurerm_role_assignment" "web_app_storage_blob_data_contributor" {
+  for_each = var.web_apps
+
+  scope                = local.data_rg_outputs.storage_account_ids["application-data"]
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = module.web_app[each.key].web_app_principal_id
 }
