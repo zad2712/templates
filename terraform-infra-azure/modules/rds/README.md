@@ -3,6 +3,8 @@
 [![Terraform](https://img.shields.io/badge/Terraform-≥1.9.0-blue.svg)](https://terraform.io)
 [![Azure](https://img.shields.io/badge/Azure-Provider~4.0-blue.svg)](https://registry.terraform.io/providers/hashicorp/azurerm/latest)
 
+**Author**: Diego A. Zarate
+
 This module provisions Azure SQL Database with advanced security features, high availability, backup configuration, and monitoring capabilities for production workloads.
 
 ## 🎯 **Features**

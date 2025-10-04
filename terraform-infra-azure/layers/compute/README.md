@@ -3,6 +3,8 @@
 [![Terraform](https://img.shields.io/badge/Terraform-≥1.9.0-blue.svg)](https://terraform.io)
 [![Azure](https://img.shields.io/badge/Azure-Provider~4.0-blue.svg)](https://registry.terraform.io/providers/hashicorp/azurerm/latest)
 
+**Author**: Diego A. Zarate
+
 The **Compute Layer** provides comprehensive container orchestration, serverless computing, and web application hosting capabilities on Azure. This layer builds upon the networking, security, and data layers to deliver production-ready compute workloads with enterprise-grade features.
 
 ## 🎯 **Layer Overview**

@@ -4,6 +4,8 @@
 [![Monitoring](https://img.shields.io/badge/Monitoring-24%2F7-green.svg)](https://docs.microsoft.com/en-us/azure/azure-monitor/)
 [![Support](https://img.shields.io/badge/Support-Enterprise-orange.svg)](https://azure.microsoft.com/en-us/support/plans/)
 
+**Author**: Diego A. Zarate
+
 This operational runbook provides comprehensive procedures for maintaining, monitoring, and operating the Azure Terraform infrastructure in production environments. It includes daily operations, maintenance schedules, troubleshooting procedures, and disaster recovery protocols.
 
 ## 🎯 **Operational Excellence Framework**

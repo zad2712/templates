@@ -7,6 +7,8 @@
 [![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen.svg)](https://github.com/actions)
 [![Security Scan](https://img.shields.io/badge/Security-Compliant-green.svg)](https://github.com/security)
 
+**Author**: Diego A. Zarate
+
 A **production-ready, enterprise-grade** Terraform infrastructure framework for Azure cloud deployments. This repository provides a complete multi-layer architecture following Infrastructure as Code (IaC) best practices, designed for scalability, maintainability, and security in enterprise environments.
 
 > **🎯 Perfect for**: Enterprise applications, microservices architectures, multi-environment deployments, DevOps teams seeking standardized infrastructure patterns.

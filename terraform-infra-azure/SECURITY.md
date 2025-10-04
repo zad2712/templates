@@ -4,6 +4,8 @@
 [![Compliance](https://img.shields.io/badge/Compliance-SOC2%20%7C%20ISO27001-green.svg)](https://docs.microsoft.com/en-us/compliance/)
 [![Zero Trust](https://img.shields.io/badge/Architecture-Zero%20Trust-blue.svg)](https://www.microsoft.com/en-us/security/business/zero-trust)
 
+**Author**: Diego A. Zarate
+
 This document provides comprehensive security guidance, best practices, and compliance frameworks for the Azure Terraform infrastructure. It covers security architecture, threat modeling, incident response, and regulatory compliance.
 
 ## 🎯 **Security Philosophy**

@@ -4,6 +4,8 @@
 [![Azure](https://img.shields.io/badge/Azure-Provider~4.0-blue.svg)](https://registry.terraform.io/providers/hashicorp/azurerm/latest)
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-≥1.28-blue.svg)](https://kubernetes.io)
 
+**Author**: Diego A. Zarate
+
 This module provisions a production-ready Azure Kubernetes Service (AKS) cluster with advanced features including multiple node pools, auto-scaling, network policies, and comprehensive monitoring.
 
 ## 🎯 **Features**

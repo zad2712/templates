@@ -3,6 +3,8 @@
 [![Terraform](https://img.shields.io/badge/Terraform-≥1.9.0-blue.svg)](https://terraform.io)
 [![Azure](https://img.shields.io/badge/Azure-Provider~4.0-blue.svg)](https://registry.terraform.io/providers/hashicorp/azurerm/latest)
 
+**Author**: Diego A. Zarate
+
 The **Data Layer** provides comprehensive data persistence, analytics, and storage capabilities on Azure. This layer implements secure, scalable, and high-performance data services with built-in backup, disaster recovery, and compliance features.
 
 ## 🎯 **Layer Overview**

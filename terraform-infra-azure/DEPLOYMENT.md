@@ -4,6 +4,8 @@
 [![PowerShell](https://img.shields.io/badge/PowerShell-≥5.1-blue.svg)](https://docs.microsoft.com/powershell/)
 [![Bash](https://img.shields.io/badge/Bash-≥4.0-blue.svg)](https://www.gnu.org/software/bash/)
 
+**Author**: Diego A. Zarate
+
 This guide provides comprehensive instructions for deploying the Azure infrastructure using the provided Terraform management scripts. The project includes both PowerShell (`terraform-manager.ps1`) and Bash (`terraform-manager.sh`) scripts for cross-platform deployment support.
 
 ## 🎯 **Overview**

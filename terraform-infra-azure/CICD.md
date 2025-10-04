@@ -4,6 +4,8 @@
 [![Azure DevOps](https://img.shields.io/badge/Azure-DevOps-blue.svg)](https://azure.microsoft.com/services/devops/)
 [![Terraform](https://img.shields.io/badge/Terraform-≥1.9.0-blue.svg)](https://terraform.io)
 
+**Author**: Diego A. Zarate
+
 This document provides comprehensive CI/CD pipeline configurations for deploying Azure infrastructure using Terraform. It includes examples for GitHub Actions, Azure DevOps, and best practices for production deployments.
 
 ## 🎯 **Pipeline Strategy**

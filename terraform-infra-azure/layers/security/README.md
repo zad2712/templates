@@ -3,6 +3,8 @@
 [![Terraform](https://img.shields.io/badge/Terraform-≥1.9.0-blue.svg)](https://terraform.io)
 [![Azure](https://img.shields.io/badge/Azure-Provider~4.0-blue.svg)](https://registry.terraform.io/providers/hashicorp/azurerm/latest)
 
+**Author**: Diego A. Zarate
+
 The **Security Layer** implements comprehensive security controls including identity management, encryption, secrets management, and compliance monitoring. This layer establishes the zero-trust security foundation for all other infrastructure components.
 
 ## 🎯 **Layer Overview**

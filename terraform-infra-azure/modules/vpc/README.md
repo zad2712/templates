@@ -3,6 +3,8 @@
 [![Terraform](https://img.shields.io/badge/Terraform-≥1.9.0-blue.svg)](https://terraform.io)
 [![Azure](https://img.shields.io/badge/Azure-Provider~4.0-blue.svg)](https://registry.terraform.io/providers/hashicorp/azurerm/latest)
 
+**Author**: Diego A. Zarate
+
 This module creates a comprehensive Azure Virtual Network (VNet) with subnets, route tables, and network security groups, providing the foundational network infrastructure for your Azure environment.
 
 ## 🎯 **Features**
